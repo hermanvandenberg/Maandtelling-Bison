@@ -23,6 +23,7 @@
       <button role="tab" data-tab="koppelingen">Koppelingen</button>
       <button role="tab" data-tab="instellingen">Instellingen</button>
       <button role="tab" data-tab="data">Gegevens</button>
+      <button role="tab" data-tab="handleiding">Handleiding</button>
     </nav>
     <button class="icon-knop" id="thema-knop" title="Licht / donker wisselen" aria-label="Licht of donker thema">◐</button>
   </header>
@@ -56,7 +57,7 @@
         <label class="knop primair">Excel-bestand kiezen<input type="file" accept=".xlsx,.xls,.xlsm,.csv" multiple class="bestand-input" hidden></label>
         <button class="knop" type="button" data-actie="voorbeeld">Voorbeelddata laden</button>
       </div>
-      <p class="hint">Je kunt ook een bestand op deze pagina slepen. Per maand één bestand, of één bestand met een tabblad per maand.</p>
+      <p class="hint">Je kunt ook een bestand op deze pagina slepen. Per maand één bestand, of één bestand met een tabblad per maand. Meer uitleg vind je in de <a href="#" data-naar-tab="handleiding">handleiding</a>.</p>
     </div>
 
     <!-- OVERZICHT -->
@@ -239,6 +240,175 @@
           <header><h3>Velden</h3></header>
           <p class="intro">Geef velden een eigen naam of verberg ze in het dashboard.</p>
           <div class="tabel-wrap"><table id="i-velden" class="tabel"></table></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- HANDLEIDING -->
+    <section class="paneel" data-paneel="handleiding" hidden>
+      <div class="handleiding">
+        <nav class="hl-inhoud kaart" aria-label="Inhoud handleiding">
+          <h3>Inhoud</h3>
+          <a class="knop licht hl-pdf" href="docs/Handleiding-Maandtelling-Bison.pdf" download>Download als PDF</a>
+          <ol>
+            <li><a href="#hl-wat">Wat is het dashboard?</a></li>
+            <li><a href="#hl-start">Aan de slag</a></li>
+            <li><a href="#hl-filters">Filteren en klikken</a></li>
+            <li><a href="#hl-overzicht">Overzicht</a></li>
+            <li><a href="#hl-bouwer">Grafiekbouwer</a></li>
+            <li><a href="#hl-medewerkers">Medewerkers en detailscherm</a></li>
+            <li><a href="#hl-koppelingen">Koppelingen</a></li>
+            <li><a href="#hl-instellingen">Instellingen</a></li>
+            <li><a href="#hl-gegevens">Gegevens</a></li>
+            <li><a href="#hl-vragen">Veelgestelde vragen</a></li>
+          </ol>
+        </nav>
+        <article class="kaart hl-tekst">
+          <h2 id="hl-wat">Wat is het dashboard?</h2>
+          <p>Het dashboard maakt van de ingevulde maandtelling overzichtelijke cijfers en grafieken. Het werkt in Chrome, Edge en Firefox, op de computer en op een tablet.</p>
+          <p>Je gegevens blijven op je eigen computer. Het Excel-bestand wordt alleen in je browser gelezen en nergens naartoe gestuurd. Daardoor zie je ook alleen de gegevens die je zelf op die computer hebt ingelezen. Wil je op een andere computer werken, gebruik dan een back-up (zie <a href="#hl-gegevens">Gegevens</a>).</p>
+
+          <h2 id="hl-start">Aan de slag</h2>
+          <p>Elke maand lees je het ingevulde Excel-bestand in. Zo bouwt het dashboard vanzelf een overzicht over de maanden heen op.</p>
+          <ol>
+            <li>Klik op <strong>Excel-bestand kiezen</strong> (startscherm of tabblad Gegevens), of sleep het bestand op de pagina.</li>
+            <li>Kies in het venster de maand waar de gegevens bij horen. Staat de maand al in de bestandsnaam (bijvoorbeeld <code>Maandtelling 2026-03.xlsx</code> of <code>Maandtelling maart 2026.xlsx</code>), dan is die al ingevuld.</li>
+            <li>Klik op <strong>Inlezen</strong>. Het overzicht verschijnt direct.</li>
+            <li>Herhaal dit voor elke maand. Lees je een maand opnieuw in, dan vervangt die de oude versie. Een fout verbeteren gaat dus door het verbeterde bestand opnieuw in te lezen.</li>
+          </ol>
+          <ul>
+            <li>Gebruik het vaste sjabloon en verander de kolomkoppen niet. De volgorde van de kolommen maakt niet uit.</li>
+            <li>Heeft één Excel-bestand meerdere tabbladen, één per maand? Dan kies je per tabblad de maand.</li>
+            <li>Eerst rondkijken zonder echte gegevens? Klik op <strong>Voorbeelddata laden</strong>; die namen en cijfers zijn verzonnen. Lees je daarna een echt bestand in, dan vraagt het dashboard of de voorbeelddata eerst weg moet. Kies OK, anders lopen ze door elkaar.</li>
+          </ul>
+
+          <h2 id="hl-filters">Filteren en klikken</h2>
+          <p>De filterbalk bovenaan geldt voor het hele dashboard: alles wat je kiest, werkt door in elke grafiek en tabel.</p>
+          <div class="tabel-wrap"><table class="tabel">
+            <thead><tr><th>Filter</th><th>Wat je ermee doet</th></tr></thead>
+            <tbody>
+              <tr><td>Van / Tot en met</td><td>De periode, bijvoorbeeld één maand of een heel kwartaal</td></tr>
+              <tr><td>Ploeg</td><td>Een of meer ploegen</td></tr>
+              <tr><td>Functie</td><td>Bijvoorbeeld alleen kapiteins of alleen matrozen</td></tr>
+              <tr><td>Dienstverband</td><td>Vast personeel of uitzendkrachten</td></tr>
+              <tr><td>Medewerker</td><td>Een of meer personen; met het zoekvak in de lijst vind je snel een naam</td></tr>
+              <tr><td>Zoeken</td><td>Typ een deel van een naam of personeelsnummer</td></tr>
+            </tbody>
+          </table></div>
+          <p>Actieve filters staan als labels onder de balk. Klik op het kruisje om er een weg te halen, of op <strong>Filters wissen</strong> om opnieuw te beginnen.</p>
+          <p>Veel grafieken zijn klikbaar. Klik op de staaf van een ploeg of functie om het hele dashboard daarop te filteren, op een punt in het verloop om die maand te kiezen, en op een medewerker om het detailscherm te openen.</p>
+
+          <h2 id="hl-overzicht">Overzicht</h2>
+          <p>Het Overzicht geeft in één scherm de stand van zaken voor de gekozen periode en filters.</p>
+          <ul>
+            <li><strong>Kerncijfers (tegels bovenaan):</strong> medewerkers, te werken dagen, gewerkte dagen, % gewerkt, % ziekteverzuim, ziektedagen, opgenomen vakantie, afgewezen aanvragen, verlofsaldo en loonsuppletie. Onder elke tegel staat de laatste maand vergeleken met de maand ervoor; groen is een verbetering, rood een verslechtering. Klik op een tegel om het verloop in de Grafiekbouwer te openen.</li>
+            <li><strong>Verloop per maand:</strong> hoe een cijfer zich over de maanden ontwikkelt. Rechtsboven kies je welk cijfer.</li>
+            <li><strong>Niet gewerkte dagen per oorzaak:</strong> waar de roosterdagen naartoe gaan, zoals ziekte, vakantie, opleiding of OR.</li>
+            <li><strong>Per ploeg en Per functie:</strong> vergelijk groepen; rechtsboven kies je het cijfer. Een klik op een staaf filtert het dashboard.</li>
+            <li><strong>Waar gaan de roosterdagen naartoe?:</strong> de verdeling van alle roosterdagen als ring.</li>
+            <li><strong>Top 10 meeste uitval:</strong> wie de meeste dagen uitviel, uitgesplitst naar oorzaak.</li>
+            <li><strong>Signalen:</strong> automatische meldingen, zoals een hoog verzuim, een laag percentage gewerkt, een hoog verlofsaldo, afgewezen vakantieaanvragen, drie maanden achter elkaar grotendeels ziek, of invoer die niet klopt. Wanneer iets een signaal is, stel je in onder Instellingen.</li>
+          </ul>
+          <p>Met het pijltje rechtsboven een grafiek sla je die op als afbeelding, bijvoorbeeld voor een verslag of presentatie.</p>
+
+          <h2 id="hl-bouwer">Grafiekbouwer</h2>
+          <p>Met de Grafiekbouwer maak je zelf elke grafiek die je nodig hebt. De grafiek en de tabel eronder passen zich direct aan.</p>
+          <div class="tabel-wrap"><table class="tabel">
+            <thead><tr><th>Keuze</th><th>Betekenis</th></tr></thead>
+            <tbody>
+              <tr><td>Meetwaarde</td><td>Welk cijfer, bijvoorbeeld ziektedagen of % gewerkt</td></tr>
+              <tr><td>Berekening</td><td>Totaal, gemiddelde per medewerker, gemiddelde per regel, mediaan, hoogste, laagste of het aantal keren boven 0</td></tr>
+              <tr><td>Indelen naar</td><td>Per maand, ploeg, functie, medewerker of dienstverband</td></tr>
+              <tr><td>Uitsplitsen naar</td><td>Een tweede indeling met een eigen kleur, bijvoorbeeld per ploeg uitgesplitst naar functie</td></tr>
+              <tr><td>Soort grafiek</td><td>Staven, liggende staven, lijn, gestapelde staven of ringdiagram</td></tr>
+              <tr><td>Sorteren en Toon</td><td>Hoogste of laagste eerst, en alleen de top 5, 10 of 15</td></tr>
+              <tr><td>Vergelijk met</td><td>Een tweede cijfer met dezelfde eenheid ernaast, bijvoorbeeld ziekte naast vakantie</td></tr>
+            </tbody>
+          </table></div>
+          <p>Voorbeelden:</p>
+          <ul>
+            <li>Ziekteverzuim per ploeg: meetwaarde % ziekteverzuim, indelen naar ploeg.</li>
+            <li>Wie nam de meeste vakantie op: meetwaarde opname vakantiedagen, indelen naar medewerker, hoogste eerst, top 10.</li>
+            <li>Verzuim door het jaar heen per functie: meetwaarde % ziekteverzuim, indelen naar maand, uitsplitsen naar functie, lijndiagram.</li>
+          </ul>
+          <p>Bewaar een grafiek die je vaker gebruikt met <strong>Grafiek bewaren als favoriet</strong>; hij staat dan onder Bewaarde grafieken. Met <strong>Opslaan als afbeelding</strong> en <strong>Gegevens als CSV</strong> neem je de grafiek of de cijfers mee naar Word, PowerPoint of Excel.</p>
+          <p>Percentages worden altijd over de opgetelde dagen berekend, niet als gemiddelde van percentages. Het verlofsaldo is een stand: daarvoor telt per medewerker de laatste maand.</p>
+
+          <h2 id="hl-medewerkers">Medewerkers en detailscherm</h2>
+          <p>Het tabblad Medewerkers toont alle cijfers per persoon in één tabel, met de totalen onderaan.</p>
+          <ul>
+            <li>Klik op een kolomkop om te sorteren; nog een klik draait de volgorde om.</li>
+            <li>Zet <strong>Per maand tonen</strong> aan om elke maand als aparte regel te zien.</li>
+            <li>Met <strong>Kolommen kiezen</strong> bepaal je welke cijfers je ziet; <strong>Alleen kerncijfers</strong> geeft een compacte tabel.</li>
+            <li>De lichte balkjes in de cellen laten zien hoe groot een waarde is ten opzichte van de rest.</li>
+            <li>Een ⚠ betekent dat een signaalwaarde uit Instellingen is overschreden.</li>
+            <li><strong>Exporteren (CSV)</strong> zet de tabel zoals je hem ziet in een bestand voor Excel.</li>
+          </ul>
+          <p>Klik op een naam voor het <strong>detailscherm</strong>: de signalen voor die persoon, een grafiek per maand, alle cijfers gegroepeerd en een tabel per maand. Velden die je in Koppelingen aan elkaar hebt gekoppeld, staan daar samen in een blok.</p>
+
+          <h2 id="hl-koppelingen">Koppelingen</h2>
+          <p>In Koppelingen leg je vast welke gegevens bij elkaar horen en welke juist niet. Jij kent de praktijk het best; het dashboard gebruikt jouw oordeel om de cijfers goed te tonen en opvallende dingen te melden.</p>
+          <h4>Een koppeling vastleggen</h4>
+          <ol>
+            <li>Kies bij Veld A en Veld B twee gegevens, bijvoorbeeld Uitval wegens ziekte en Loonsuppletie. Je kunt ook een kenmerk kiezen, zoals Ploeg of Functie.</li>
+            <li>Kies of ze bij elkaar horen: <strong>🔗 Ja, gekoppeld</strong>, <strong>⛔ Nee, juist niet gekoppeld</strong> of <strong>❔ Nog uitzoeken</strong>.</li>
+            <li>Schrijf bij Toelichting waarom.</li>
+            <li>Klik op <strong>Opslaan</strong>.</li>
+          </ol>
+          <p>Rechts zie je meteen het verband in de cijfers. Bij twee getallen is dat een stippengrafiek met een trendlijn: elke stip is een medewerker in een maand. Liggen de stippen netjes langs de lijn, dan bewegen de cijfers samen.</p>
+          <ul>
+            <li><strong>Alle koppelingen:</strong> je lijst met keuzes; de status pas je direct in de lijst aan. De kolom r laat zien hoe sterk de twee in de cijfers samenhangen.</li>
+            <li><strong>Suggesties:</strong> paren die sterk samenhangen maar nog niet beoordeeld zijn, en waarschuwingen als jouw keuze en de cijfers botsen. Met Koppelen en Niet beoordeel je ze direct.</li>
+            <li><strong>Samenhangmatrix:</strong> alle getallen tegen elkaar. Blauw = stijgen samen, rood = de een stijgt als de ander daalt, licht = nauwelijks verband. Klik op een vakje om dat paar te bekijken.</li>
+            <li><strong>Groepen van gekoppelde velden:</strong> alles wat via koppelingen met elkaar verbonden is.</li>
+          </ul>
+          <div class="tabel-wrap"><table class="tabel">
+            <thead><tr><th>r</th><th>Betekenis</th></tr></thead>
+            <tbody>
+              <tr><td>0,7 tot 1</td><td>Sterk verband: als het een stijgt, stijgt het ander ook</td></tr>
+              <tr><td>0,4 tot 0,7</td><td>Matig verband</td></tr>
+              <tr><td>0,2 tot 0,4</td><td>Zwak verband</td></tr>
+              <tr><td>−0,2 tot 0,2</td><td>Nauwelijks verband</td></tr>
+              <tr><td>onder −0,2</td><td>Tegengesteld: als het een stijgt, daalt het ander</td></tr>
+            </tbody>
+          </table></div>
+          <p>Een sterk verband in de cijfers betekent niet automatisch dat twee dingen bij elkaar horen. Dat oordeel blijft aan jou.</p>
+          <p><strong>Vooraf klaargezet om te beoordelen:</strong> in het Excel-sjabloon telt Uitval wegens boven de sterkte mee als ziekteverzuim, en worden gekochte vakantiedagen afgetrokken van de gewerkte dagen. Klopt dat niet, zet de koppeling dan op Niet gekoppeld en pas de formule aan in Instellingen.</p>
+
+          <h2 id="hl-instellingen">Instellingen</h2>
+          <p>In Instellingen bepaal je hoe het dashboard rekent en wat het meldt. Alles wordt meteen bewaard en alle cijfers worden direct opnieuw berekend.</p>
+          <p><strong>Formules: wat telt waar mee?</strong> Per veld kies je of het bij Gewerkte dagen wordt opgeteld, afgetrokken of niet meetelt; of het meetelt als ziekteverzuim; en of het de noemer is voor de percentages (standaard alleen de te werken dagen). Standaard zijn de formules gelijk aan het Excel-sjabloon; met <strong>Terug naar Excel-formules</strong> zet je ze terug.</p>
+          <div class="tabel-wrap"><table class="tabel">
+            <thead><tr><th>Signaal</th><th>Standaard</th></tr></thead>
+            <tbody>
+              <tr><td>Ziekteverzuim hoger dan</td><td>5 %</td></tr>
+              <tr><td>Percentage gewerkt lager dan</td><td>80 %</td></tr>
+              <tr><td>Verlofsaldo hoger dan</td><td>40 dagen</td></tr>
+              <tr><td>Afgewezen vakantieaanvragen vanaf</td><td>1 (0 zet dit signaal uit)</td></tr>
+            </tbody>
+          </table></div>
+          <p><strong>Velden:</strong> geef een veld een kortere of duidelijkere naam, of verberg een veld dat je niet gebruikt.</p>
+          <p><strong>Instellingen delen:</strong> je keuzes staan in deze browser. Met <strong>Instellingen exporteren</strong> krijg je het bestand <code>koppelingen.json</code>. Stuur dat naar Herman, dan kan hij jouw keuzes de standaard maken voor iedereen. Met <strong>Instellingen importeren</strong> laad je zo'n bestand op een andere computer.</p>
+
+          <h2 id="hl-gegevens">Gegevens</h2>
+          <ul>
+            <li><strong>Ingelezen maanden:</strong> per maand het bronbestand, het aantal regels en de te werken dagen. Een ⚠ betekent dat er geen te werken dagen zijn ingevuld. Met het kruisje verwijder je een maand.</li>
+            <li><strong>Alle gegevens exporteren (JSON):</strong> een back-up van alle maanden en instellingen. Maak die regelmatig, bijvoorbeeld na elke maand. Met <strong>Back-up terugzetten</strong> laad je hem op een andere computer.</li>
+            <li><strong>Alles als CSV:</strong> alle regels van alle maanden in één bestand voor Excel.</li>
+            <li><strong>Alle gegevens wissen:</strong> haalt alle maanden weg; instellingen en koppelingen blijven bewaard.</li>
+          </ul>
+          <p>Let op: wis je de browsergeschiedenis inclusief websitegegevens, of werk je in een privévenster, dan zijn de ingelezen gegevens weg. Met een back-up of de originele Excel-bestanden zet je ze terug.</p>
+
+          <h2 id="hl-vragen">Veelgestelde vragen</h2>
+          <dl class="hl-vragen">
+            <dt>Ik zie alleen een welkomstscherm.</dt><dd>Er zijn op deze computer nog geen gegevens ingelezen. Lees een Excel-bestand in of zet een back-up terug.</dd>
+            <dt>De maand werd niet herkend.</dt><dd>Kies hem zelf in het venster, of zet de maand in de bestandsnaam, bijvoorbeeld <code>Maandtelling 2026-03.xlsx</code>.</dd>
+            <dt>Een percentage staat op een streepje.</dt><dd>Er zijn voor die selectie geen te werken dagen ingevuld, dus er valt niets te delen.</dd>
+            <dt>De cijfers wijken af van het Excel-bestand.</dt><dd>Controleer of de formules onder Instellingen zijn aangepast. Met Terug naar Excel-formules is alles weer gelijk aan het sjabloon.</dd>
+            <dt>Kan Herman mijn gegevens zien?</dt><dd>Nee. Alles blijft in jouw browser. Wil je iets delen, gebruik dan een export, een afbeelding van een grafiek of een back-up.</dd>
+            <dt>Er klopt iets niet of ik mis een functie.</dt><dd>Laat het Herman weten, dan wordt het dashboard aangepast.</dd>
+            <dt>Er is een nieuwe versie, maar ik zie hem niet.</dt><dd>Druk op Ctrl + F5 om de pagina opnieuw te laden.</dd>
+          </dl>
         </article>
       </div>
     </section>

@@ -21,6 +21,8 @@ telgegevens in deze repo. Ingelezen gegevens worden alleen in de browser van de 
 
 Wil je eerst rondkijken? Klik op **Voorbeelddata laden** (verzonnen namen en cijfers).
 
+Een volledige handleiding staat in het tabblad **Handleiding** van het dashboard, en als PDF om te printen in [`docs/Handleiding-Maandtelling-Bison.pdf`](docs/Handleiding-Maandtelling-Bison.pdf).
+
 ## Onderdelen
 
 | Tabblad | Wat je ermee doet |

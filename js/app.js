@@ -86,6 +86,7 @@
   function verborgen(key) { return !!(S.config.velden[key] && S.config.velden[key].verborgen); }
   function meetVelden(ookVerborgen) { return alleMeetDefs().filter(m => ookVerborgen || !verborgen(m.key)); }
   function isDim(key) { return B.DIMENSIES.some(d => d.key === key); }
+  const ZONDER_DATA = ['data', 'instellingen', 'koppelingen', 'handleiding'];
   const GROEP_DIMS = ['maand', 'ploeg', 'functie', 'naam', 'type'];
 
   function maatOpties(sel, waarde, opts) {
@@ -215,8 +216,8 @@
     const heeft = S.regels.length > 0;
     $('#leeg').hidden = heeft;
     $('#filterbalk').hidden = !heeft;
-    $$('.paneel').forEach(p => { p.hidden = !heeft ? !['data', 'instellingen', 'koppelingen'].includes(p.dataset.paneel) || p.dataset.paneel !== S.tab : p.dataset.paneel !== S.tab; });
-    if (!heeft && !['data', 'instellingen', 'koppelingen'].includes(S.tab)) $$('.paneel').forEach(p => { p.hidden = true; });
+    $$('.paneel').forEach(p => { p.hidden = !heeft ? !ZONDER_DATA.includes(p.dataset.paneel) || p.dataset.paneel !== S.tab : p.dataset.paneel !== S.tab; });
+    if (!heeft && !ZONDER_DATA.includes(S.tab)) $$('.paneel').forEach(p => { p.hidden = true; });
     const n = new Set(S.regels.map(r => r.mdw)).size;
     $('#bron-info').textContent = heeft
       ? S.maanden.length + ' maand' + (S.maanden.length === 1 ? '' : 'en') + ' (' + B.maandLabel(S.maanden[0], true) + (S.maanden.length > 1 ? ' – ' + B.maandLabel(S.maanden[S.maanden.length - 1], true) : '') + ') · ' + n + ' medewerkers'
@@ -250,8 +251,8 @@
     S.tab = t;
     $$('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
     const heeft = S.regels.length > 0;
-    $$('.paneel').forEach(p => { p.hidden = p.dataset.paneel !== t || (!heeft && !['data', 'instellingen', 'koppelingen'].includes(t)); });
-    $('#leeg').hidden = heeft || ['data', 'instellingen', 'koppelingen'].includes(t);
+    $$('.paneel').forEach(p => { p.hidden = p.dataset.paneel !== t || (!heeft && !ZONDER_DATA.includes(t)); });
+    $('#leeg').hidden = heeft || ZONDER_DATA.includes(t);
     bewaarUi();
     renderTab();
   }
@@ -1268,6 +1269,10 @@
         herbereken();
         if (S.tab === 'data') kiesTab('overzicht');
       }
+      const nt = e.target.closest('[data-naar-tab]');
+      if (nt) { e.preventDefault(); kiesTab(nt.dataset.naarTab); }
+      const hl = e.target.closest('.hl-inhoud a, .hl-tekst a[href^="#hl-"]');
+      if (hl) { e.preventDefault(); const doel = document.querySelector(hl.getAttribute('href')); if (doel) doel.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       const d = e.target.closest('[data-detail]');
       if (d) openDetail(d.dataset.detail);
       const k = e.target.closest('[data-kpi]');
