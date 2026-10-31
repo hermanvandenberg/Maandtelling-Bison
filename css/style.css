@@ -216,6 +216,12 @@ main { padding: 20px; max-width: 1500px; margin: 0 auto; }
 
 .melding { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--inkt); color: var(--vlak); padding: 10px 16px; border-radius: 10px; z-index: 50; box-shadow: 0 8px 24px rgba(0,0,0,.25); max-width: calc(100% - 32px); }
 
+/* PDF-export */
+.pdf-delen { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 2px 12px; }
+.pdf-delen label { font-size: 13px; }
+.pdf-delen .groep-kop { grid-column: 1 / -1; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--inkt-3); margin-top: 6px; }
+.bezig { cursor: progress; }
+
 /* Handleiding */
 .handleiding { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 16px; align-items: start; }
 .hl-inhoud { position: sticky; top: calc(var(--kop, 70px) + 16px); max-height: calc(100vh - var(--kop, 70px) - 32px); overflow: auto; }

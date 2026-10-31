@@ -272,7 +272,8 @@
     Chart.defaults.plugins.tooltip.padding = 10;
     Chart.defaults.plugins.tooltip.cornerRadius = 8;
     Chart.defaults.maintainAspectRatio = false;
-    Chart.defaults.animation.duration = 250;
+    Chart.defaults.animation.duration = S.export ? 0 : 250;
+    Chart.defaults.devicePixelRatio = S.export ? 3 : undefined;
   }
   function teken(id, cfg) {
     if (S.grafieken[id]) S.grafieken[id].destroy();
@@ -1314,6 +1315,212 @@
 
   function isVoorbeeld(maand) { return !!(maand && (maand.voorbeeld || maand.bron === 'Voorbeelddata')); }
 
+  /* ================= PDF-export ================= */
+  const PDF_DELEN = [
+    { groep: 'Overzicht', key: 'kpis', l: 'Kerncijfers', tab: 'overzicht', kort: true },
+    { groep: 'Overzicht', key: 'c-trend', l: 'Verloop per maand', tab: 'overzicht', grafiek: true, kort: true },
+    { groep: 'Overzicht', key: 'c-oorzaak', l: 'Niet gewerkte dagen per oorzaak', tab: 'overzicht', grafiek: true, kort: true },
+    { groep: 'Overzicht', key: 'c-ploeg', l: () => 'Per ploeg: ' + label(S.ploegMaat), tab: 'overzicht', grafiek: true, kort: true },
+    { groep: 'Overzicht', key: 'c-functie', l: () => 'Per functie: ' + label(S.functieMaat), tab: 'overzicht', grafiek: true },
+    { groep: 'Overzicht', key: 'c-besteding', l: 'Waar gaan de roosterdagen naartoe?', tab: 'overzicht', grafiek: true },
+    { groep: 'Overzicht', key: 'c-top', l: 'Top 10 medewerkers met de meeste uitval', tab: 'overzicht', grafiek: true },
+    { groep: 'Overzicht', key: 'signalen', l: 'Signalen', tab: 'overzicht', kort: true },
+    { groep: 'Overige tabbladen', key: 'bouwer', l: 'Huidige grafiek uit de Grafiekbouwer (met tabel)', tab: 'bouwer' },
+    { groep: 'Overige tabbladen', key: 'medewerkers', l: 'Medewerkerstabel (huidige kolommen)', tab: 'medewerkers' },
+    { groep: 'Overige tabbladen', key: 'koppelingen', l: 'Lijst met koppelingen', tab: 'koppelingen' },
+  ];
+  const pdfLabel = d => (typeof d.l === 'function' ? d.l() : d.l);
+  const wacht = ms => new Promise(r => setTimeout(r, ms));
+
+  // De standaardletters van een PDF kennen geen emoji of pijltjes: vertaal of verwijder die.
+  function pdfTekst(t) {
+    return String(t == null ? '' : t)
+      .replace(/▲/g, '+').replace(/▼/g, '−').replace(/⚠️?/g, '!').replace(/−/g, '-')
+      .replace(/[^\x00-ÿ–—‘’“”€…]/g, '')
+      .replace(/\s+/g, ' ').trim();
+  }
+
+  function filterOmschrijving() {
+    const f = S.filter;
+    const delen = [];
+    if (f.van && f.tot) delen.push(f.van === f.tot ? B.maandLabel(f.van) : B.maandLabel(f.van) + ' t/m ' + B.maandLabel(f.tot));
+    ['ploeg', 'functie', 'type', 'naam'].forEach(k => { if (f[k].size) delen.push(label(k) + ': ' + Array.from(f[k]).join(', ')); });
+    if (f.zoek) delen.push('zoeken: ' + f.zoek);
+    return delen.join(' · ') || 'alle gegevens';
+  }
+
+  function openPdfDialoog() {
+    const vorige = (() => { try { return JSON.parse(localStorage.getItem('bison.pdf.v1') || 'null'); } catch (e) { return null; } })();
+    const gekozen = new Set(vorige && vorige.delen ? vorige.delen : PDF_DELEN.filter(d => d.kort).map(d => d.key));
+    let html = '', groep = '';
+    PDF_DELEN.forEach(d => {
+      if (d.groep !== groep) { groep = d.groep; html += '<div class="groep-kop">' + esc(groep) + '</div>'; }
+      html += '<label><input type="checkbox" value="' + d.key + '"' + (gekozen.has(d.key) ? ' checked' : '') + '> ' + esc(pdfLabel(d)) + '</label>';
+    });
+    $('#pdf-delen').innerHTML = html;
+    $('#pdf-filters').textContent = filterOmschrijving();
+    $('#pdf-titel').value = 'Maandtelling Bison – ' + (S.filter.van === S.filter.tot ? B.maandLabel(S.filter.van) : B.maandLabel(S.filter.van) + ' t/m ' + B.maandLabel(S.filter.tot));
+    if (vorige && vorige.richting) $('#pdf-richting').value = vorige.richting;
+    $('#pdf-dialoog').showModal();
+  }
+
+  async function verzamelPdfGegevens(keys) {
+    const uit = { beelden: {}, verhouding: {} };
+    const oud = { tab: S.tab, thema: S.thema, scrollY: window.scrollY };
+    S.export = true;
+    S.thema = 'light'; zetThema();
+    try {
+      const tabs = Array.from(new Set(PDF_DELEN.filter(d => keys.includes(d.key)).map(d => d.tab)));
+      for (const t of tabs) {
+        kiesTab(t);
+        await wacht(60);
+        PDF_DELEN.filter(d => d.tab === t && keys.includes(d.key)).forEach(d => {
+          const id = d.grafiek ? d.key : d.key === 'bouwer' ? 'c-bouwer' : null;
+          if (id && S.grafieken[id]) {
+            const g = S.grafieken[id];
+            // Vaste breedte, zodat letters in de PDF overal even groot zijn (brede kaarten worden anders piepklein).
+            g.options.responsive = false;
+            g.resize(820, Math.max(380, Math.min(g.height, 620)));
+            uit.beelden[d.key] = g.toBase64Image('image/png', 1);
+            uit.verhouding[d.key] = g.canvas.height / g.canvas.width;
+          }
+        });
+        if (t === 'overzicht') uit.kpis = $$('#kpis .kpi').map(k => [pdfTekst($('.kpi-label', k).textContent), pdfTekst($('.kpi-waarde', k).textContent), pdfTekst($('.kpi-sub', k).textContent)]);
+      }
+    } finally {
+      S.export = false;
+      S.thema = oud.thema; zetThema();
+      kiesTab(oud.tab);
+      window.scrollTo(0, oud.scrollY);
+    }
+    return uit;
+  }
+
+  async function maakPdf() {
+    const keys = $$('#pdf-delen input:checked').map(i => i.value);
+    if (!keys.length) { melding('Kies minstens één onderdeel'); return; }
+    if (!window.jspdf) { melding('De PDF-module kon niet geladen worden'); return; }
+    const titel = $('#pdf-titel').value.trim() || 'Maandtelling Bison';
+    const opmerking = $('#pdf-opmerking').value.trim();
+    const richting = $('#pdf-richting').value;
+    try { localStorage.setItem('bison.pdf.v1', JSON.stringify({ delen: keys, richting })); } catch (e) { /* niet erg */ }
+    $('#pdf-dialoog').close();
+    document.body.classList.add('bezig');
+    melding('PDF wordt gemaakt…');
+    try {
+      const g = await verzamelPdfGegevens(keys);
+      const doc = new window.jspdf.jsPDF({ orientation: richting, unit: 'mm', format: 'a4' });
+      const M = 15;
+      const B_ = () => doc.internal.pageSize.getWidth() - 2 * M;
+      const H_ = () => doc.internal.pageSize.getHeight();
+      let y = M;
+      const ruimte = h => { if (y + h > H_() - M) { doc.addPage('a4', richting); y = M; } };
+      const kop = t => { ruimte(14); doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(11, 11, 11); doc.text(pdfTekst(t), M, y + 5); y += 9; };
+      const alinea = (t, grootte, kleur) => {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(grootte || 10); doc.setTextColor.apply(doc, kleur || [11, 11, 11]);
+        const regels = doc.splitTextToSize(pdfTekst(t), B_());
+        regels.forEach(r => { ruimte(5); doc.text(r, M, y + 4); y += (grootte || 10) * 0.45; });
+        y += 2;
+      };
+      const tabel = (kopRij, rijen, extra) => {
+        doc.autoTable(Object.assign({
+          head: [kopRij.map(pdfTekst)], body: rijen.map(r => r.map(c => pdfTekst(c))), startY: y, margin: { left: M, right: M },
+          styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 1.6, textColor: [11, 11, 11], lineColor: [225, 224, 217], lineWidth: 0.1 },
+          headStyles: { fillColor: [242, 241, 237], textColor: [82, 81, 78], fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [252, 252, 251] },
+        }, extra || {}));
+        y = doc.lastAutoTable.finalY + 6;
+      };
+      // Grafieken niet hoger dan ~95 mm (staand) of ~110 mm (liggend), zodat er meer op een pagina past.
+      const maat = key => {
+        const r = g.verhouding[key] || 0.5;
+        const h = Math.min(B_() * r, richting === 'l' ? 110 : 95);
+        return { w: h / r, h };
+      };
+      const beeld = key => {
+        const src = g.beelden[key]; if (!src) return;
+        const { w, h } = maat(key);
+        ruimte(h + 2);
+        doc.addImage(src, 'PNG', M + (B_() - w) / 2, y, w, h, undefined, 'FAST');
+        y += h + 6;
+      };
+
+      // Voorblad-kop
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(11, 11, 11);
+      doc.splitTextToSize(pdfTekst(titel), B_()).forEach(r => { doc.text(r, M, y + 6); y += 8; });
+      y += 1;
+      alinea('Gemaakt op ' + new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }) + ' · Gegevens: ' + filterOmschrijving(), 9, [82, 81, 78]);
+      if (opmerking) { y += 1; alinea(opmerking, 10.5); }
+      y += 3;
+
+      for (const d of PDF_DELEN.filter(x => keys.includes(x.key))) {
+        if (d.key === 'kpis' && g.kpis) { kop('Kerncijfers'); tabel(['Kerncijfer', 'Waarde', 'Toelichting'], g.kpis, { columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } } }); }
+        else if (d.grafiek) { if (!g.beelden[d.key]) continue; ruimte(14 + maat(d.key).h); kop(pdfLabel(d)); beeld(d.key); }
+        else if (d.key === 'signalen') {
+          kop('Signalen');
+          const lijst = signalenLijst(S.gefilterd);
+          if (!lijst.length) alinea('Geen bijzonderheden met de huidige filters.');
+          else tabel(['Signaal'], lijst.map(s => [s.t]));
+        } else if (d.key === 'bouwer') {
+          const b = S.bouwer;
+          if (g.beelden.bouwer) ruimte(14 + maat('bouwer').h);
+          kop(label(b.maat) + ' per ' + label(b.dim).toLowerCase() + (b.split ? ', uitgesplitst naar ' + label(b.split).toLowerCase() : ''));
+          beeld('bouwer');
+          if (S._bouwerTabel) tabel(S._bouwerTabel[0], S._bouwerTabel.slice(1).map(r => r.map((c, i) => i === 0 || c === '' ? c : nf1.format(c))));
+        } else if (d.key === 'medewerkers' && S._mTabel) {
+          // Nummer en dienstverband laten we weg in de PDF; dat scheelt ruimte voor de cijfers.
+          const kol = S._mTabel.kol.filter(k => k.key !== 'mdwNr' && k.key !== 'type');
+          const rijen = S._mTabel.rijen;
+          if (kol.length > 9 && richting === 'p') { doc.addPage('a4', 'l'); y = M; }
+          kop('Medewerkers');
+          const veel = kol.length > 14;
+          const kolStijl = {};
+          kol.forEach((k, i) => {
+            if (k.key === 'naam') kolStijl[i] = { cellWidth: veel ? 30 : 38 };
+            else if (k.key === 'functie') kolStijl[i] = { cellWidth: veel ? 22 : 30 };
+            else if (k.key === 'ploeg') kolStijl[i] = { cellWidth: 12 };
+            else if (k.getal) kolStijl[i] = { halign: 'right' };
+          });
+          tabel(kol.map(k => k.l), rijen.map(r => kol.map(k => k.key === 'maand' ? B.maandLabel(r[k.key], true) : k.key === 'functie' ? String(r[k.key]).replace(' havenduwboot', '') : k.getal ? fmt(r[k.key], k.key) : r[k.key])),
+            { styles: { font: 'helvetica', fontSize: veel ? 6.5 : 8, cellPadding: 1.1, textColor: [11, 11, 11], lineColor: [225, 224, 217], lineWidth: 0.1 },
+              headStyles: { fillColor: [242, 241, 237], textColor: [82, 81, 78], fontStyle: 'bold', fontSize: veel ? 6 : 7.5 },
+              columnStyles: kolStijl });
+        } else if (d.key === 'koppelingen') {
+          kop('Koppelingen');
+          const st = { gekoppeld: 'Gekoppeld', niet: 'Niet gekoppeld', onbekend: 'Nog uitzoeken' };
+          if (!S.config.koppelingen.length) alinea('Er zijn nog geen koppelingen vastgelegd.');
+          else tabel(['Veld A', 'Veld B', 'Status', 'Toelichting'], S.config.koppelingen.map(k => [label(k.a), label(k.b), st[k.status] || k.status, k.notitie || '']), { columnStyles: { 3: { cellWidth: 'auto' } } });
+        }
+      }
+
+      const n = doc.getNumberOfPages();
+      for (let i = 1; i <= n; i++) {
+        doc.setPage(i);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(137, 135, 129);
+        doc.text(pdfTekst(titel) + '  ·  pagina ' + i + ' van ' + n, doc.internal.pageSize.getWidth() / 2, doc.internal.pageSize.getHeight() - 8, { align: 'center' });
+      }
+      const bestand = pdfTekst(titel).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'maandtelling';
+      doc.save(bestand + '.pdf');
+      melding('PDF opgeslagen in je downloads');
+    } catch (e) {
+      console.error(e);
+      melding('PDF maken mislukt: ' + e.message);
+    } finally {
+      document.body.classList.remove('bezig');
+    }
+  }
+
+  function initPdf() {
+    $('#pdf-knop').addEventListener('click', openPdfDialoog);
+    $('#pdf-maak').addEventListener('click', maakPdf);
+    $('#pdf-form').addEventListener('click', e => {
+      const zet = f => $$('#pdf-delen input').forEach(i => { i.checked = f(i.value); });
+      if (e.target.closest('[data-pdf-alles]')) zet(() => true);
+      if (e.target.closest('[data-pdf-geen]')) zet(() => false);
+      if (e.target.closest('[data-pdf-kort]')) zet(k => PDF_DELEN.some(d => d.key === k && d.kort));
+    });
+  }
+
   /* ================= Start ================= */
   async function standaardConfig() {
     try {
@@ -1353,7 +1560,7 @@
     $('#functie-maat').addEventListener('change', e => { S.functieMaat = e.target.value; bewaarUi(); renderPerDim('functie', 'c-functie', S.functieMaat); });
     $('#detail-sluit').addEventListener('click', () => $('#detail-dialoog').close());
     $('#detail-dialoog').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.close(); });
-    initFilters(); initBouwer(); initMedewerkers(); initKoppelingen(); initInstellingen(); initData();
+    initFilters(); initPdf(); initBouwer(); initMedewerkers(); initKoppelingen(); initInstellingen(); initData();
     herbereken();
     kiesTab(S.tab || 'overzicht');
     window.addEventListener('resize', zetKopHoogte);

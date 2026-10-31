@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Maandtelling Bison</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E%3Crect x='7' y='16' width='4' height='9' rx='1' fill='white'/%3E%3Crect x='14' y='10' width='4' height='15' rx='1' fill='white'/%3E%3Crect x='21' y='6' width='4' height='19' rx='1' fill='white'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="css/style.css?v=4">
+  <link rel="stylesheet" href="css/style.css?v=5">
 </head>
 <body>
   <header class="topbar">
@@ -46,6 +46,7 @@
       <input id="f-zoek" type="search" placeholder="Naam of nummer…">
     </div>
     <button class="knop licht" id="f-wis" type="button">Filters wissen</button>
+    <button class="knop primair" id="pdf-knop" type="button" title="Maak een PDF van (een deel van) het dashboard">PDF maken</button>
     <div class="actieve-filters" id="actieve-filters"></div>
   </section>
 
@@ -260,6 +261,7 @@
             <li><a href="#hl-koppelingen">Koppelingen</a></li>
             <li><a href="#hl-instellingen">Instellingen</a></li>
             <li><a href="#hl-gegevens">Gegevens</a></li>
+            <li><a href="#hl-pdf">PDF maken en delen</a></li>
             <li><a href="#hl-vragen">Veelgestelde vragen</a></li>
           </ol>
         </nav>
@@ -399,6 +401,17 @@
           </ul>
           <p>Let op: wis je de browsergeschiedenis inclusief websitegegevens, of werk je in een privévenster, dan zijn de ingelezen gegevens weg. Met een back-up of de originele Excel-bestanden zet je ze terug.</p>
 
+          <h2 id="hl-pdf">PDF maken en delen</h2>
+          <p>Met de knop <strong>PDF maken</strong> in de filterbalk maak je een PDF van (een deel van) het dashboard, bijvoorbeeld om te mailen of te printen.</p>
+          <ol>
+            <li>Zet eerst de filters zoals je wilt: de PDF toont precies wat bij die filters hoort, bijvoorbeeld één maand of één ploeg.</li>
+            <li>Klik op <strong>PDF maken</strong>. Pas zo nodig de titel aan en schrijf eventueel een opmerking voor de ontvangers.</li>
+            <li>Vink aan wat erin moet: kerncijfers, losse grafieken van het Overzicht, signalen, de huidige grafiek uit de Grafiekbouwer, de medewerkerstabel en/of de lijst met koppelingen. <strong>Kort overzicht</strong> kiest de belangrijkste onderdelen.</li>
+            <li>Kies A4 staand of liggend en klik op <strong>PDF maken</strong>. De PDF komt in je downloads en kun je als bijlage mailen.</li>
+          </ol>
+          <p>De PDF wordt altijd in licht thema gemaakt, ook als je het donkere thema gebruikt. Brede tabellen komen vanzelf op een liggende pagina. Je keuze wordt onthouden voor de volgende keer.</p>
+          <p><strong>Let op:</strong> de PDF kan namen en persoonlijke cijfers bevatten, zoals ziekteverzuim. Deel hem alleen met collega's die dat mogen zien, en laat bij twijfel de medewerkerstabel en signalen weg of filter op een groep.</p>
+
           <h2 id="hl-vragen">Veelgestelde vragen</h2>
           <dl class="hl-vragen">
             <dt>Ik zie alleen een welkomstscherm.</dt><dd>Er zijn op deze computer nog geen gegevens ingelezen. Lees een Excel-bestand in of zet een back-up terug.</dd>
@@ -457,6 +470,27 @@
     </form>
   </dialog>
 
+  <dialog id="pdf-dialoog" class="dialoog">
+    <form method="dialog" id="pdf-form">
+      <div class="dialoog-kop"><h2>PDF maken</h2><button class="icon-knop" value="annuleer" aria-label="Sluiten">✕</button></div>
+      <p class="intro">De PDF gebruikt de filters die nu aan staan: <strong id="pdf-filters"></strong></p>
+      <div class="veld"><label for="pdf-titel">Titel</label><input type="text" id="pdf-titel"></div>
+      <div class="veld" style="margin-top:10px"><label for="pdf-opmerking">Opmerking bovenaan (optioneel)</label><textarea id="pdf-opmerking" rows="2" placeholder="Bijv. toelichting voor de ontvangers"></textarea></div>
+      <fieldset class="status-keuze" style="margin-top:12px">
+        <legend>Wat moet erin?</legend>
+        <div class="knoppen" style="margin:0 0 6px"><button class="knop licht" type="button" data-pdf-alles>Alles</button><button class="knop licht" type="button" data-pdf-geen>Niets</button><button class="knop licht" type="button" data-pdf-kort>Kort overzicht</button></div>
+        <div id="pdf-delen" class="pdf-delen"></div>
+      </fieldset>
+      <div class="veld" style="margin-top:10px"><label for="pdf-richting">Pagina</label>
+        <select id="pdf-richting"><option value="p">A4 staand</option><option value="l">A4 liggend</option></select></div>
+      <p class="hint" style="margin-top:10px">Let op: de PDF kan namen en persoonlijke cijfers bevatten. Deel hem alleen met collega's die dat mogen zien.</p>
+      <div class="knoppen rechts">
+        <button class="knop licht" value="annuleer">Annuleren</button>
+        <button class="knop primair" type="button" id="pdf-maak">PDF maken</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="detail-dialoog" class="dialoog groot">
     <div class="dialoog-kop"><h2 id="detail-titel"></h2><button class="icon-knop" id="detail-sluit" aria-label="Sluiten">✕</button></div>
     <div id="detail-inhoud"></div>
@@ -466,8 +500,10 @@
 
   <script src="vendor/xlsx.full.min.js"></script>
   <script src="vendor/chart.umd.min.js"></script>
-  <script src="js/velden.js?v=4"></script>
-  <script src="js/data.js?v=4"></script>
-  <script src="js/app.js?v=4"></script>
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="vendor/jspdf.plugin.autotable.min.js"></script>
+  <script src="js/velden.js?v=5"></script>
+  <script src="js/data.js?v=5"></script>
+  <script src="js/app.js?v=5"></script>
 </body>
 </html>
