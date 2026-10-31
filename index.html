@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Maandtelling Bison</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E%3Crect x='7' y='16' width='4' height='9' rx='1' fill='white'/%3E%3Crect x='14' y='10' width='4' height='15' rx='1' fill='white'/%3E%3Crect x='21' y='6' width='4' height='19' rx='1' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <div>
+        <h1>Maandtelling Bison</h1>
+        <p class="sub" id="bron-info">Nog geen gegevens geladen</p>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Onderdelen">
+      <button role="tab" data-tab="overzicht" aria-selected="true">Overzicht</button>
+      <button role="tab" data-tab="bouwer">Grafiekbouwer</button>
+      <button role="tab" data-tab="medewerkers">Medewerkers</button>
+      <button role="tab" data-tab="koppelingen">Koppelingen</button>
+      <button role="tab" data-tab="instellingen">Instellingen</button>
+      <button role="tab" data-tab="data">Gegevens</button>
+    </nav>
+    <button class="icon-knop" id="thema-knop" title="Licht / donker wisselen" aria-label="Licht of donker thema">◐</button>
+  </header>
+
+  <section class="filterbalk" id="filterbalk" aria-label="Filters">
+    <div class="filter">
+      <label for="f-van">Van</label>
+      <select id="f-van"></select>
+    </div>
+    <div class="filter">
+      <label for="f-tot">Tot en met</label>
+      <select id="f-tot"></select>
+    </div>
+    <div class="filter" data-multi="ploeg"><span class="flabel">Ploeg</span><button class="multi-knop" type="button">Alle</button><div class="multi-lijst" hidden></div></div>
+    <div class="filter" data-multi="functie"><span class="flabel">Functie</span><button class="multi-knop" type="button">Alle</button><div class="multi-lijst" hidden></div></div>
+    <div class="filter" data-multi="type"><span class="flabel">Dienstverband</span><button class="multi-knop" type="button">Alle</button><div class="multi-lijst" hidden></div></div>
+    <div class="filter" data-multi="naam"><span class="flabel">Medewerker</span><button class="multi-knop" type="button">Alle</button><div class="multi-lijst" hidden></div></div>
+    <div class="filter zoek">
+      <label for="f-zoek">Zoeken</label>
+      <input id="f-zoek" type="search" placeholder="Naam of nummer…">
+    </div>
+    <button class="knop licht" id="f-wis" type="button">Filters wissen</button>
+    <div class="actieve-filters" id="actieve-filters"></div>
+  </section>
+
+  <main>
+    <div id="leeg" class="leeg" hidden>
+      <h2>Welkom</h2>
+      <p>Lees het ingevulde Excel-bestand van de maandtelling in om te beginnen. De gegevens blijven in deze browser en worden nergens naartoe gestuurd.</p>
+      <div class="knoppen">
+        <label class="knop primair">Excel-bestand kiezen<input type="file" accept=".xlsx,.xls,.xlsm,.csv" multiple class="bestand-input" hidden></label>
+        <button class="knop" type="button" data-actie="voorbeeld">Voorbeelddata laden</button>
+      </div>
+      <p class="hint">Je kunt ook een bestand op deze pagina slepen. Per maand één bestand, of één bestand met een tabblad per maand.</p>
+    </div>
+
+    <!-- OVERZICHT -->
+    <section class="paneel" data-paneel="overzicht">
+      <div class="kpis" id="kpis"></div>
+      <div class="raster">
+        <article class="kaart breed">
+          <header><h3>Verloop per maand</h3><div class="kaart-acties"><select id="trend-maat" aria-label="Meetwaarde trend"></select><button class="icon-knop" data-png="c-trend" title="Opslaan als afbeelding">⤓</button></div></header>
+          <div class="grafiek"><canvas id="c-trend"></canvas></div>
+          <p class="voet" id="trend-voet"></p>
+        </article>
+        <article class="kaart">
+          <header><h3>Niet gewerkte dagen per oorzaak</h3><div class="kaart-acties"><button class="icon-knop" data-png="c-oorzaak" title="Opslaan als afbeelding">⤓</button></div></header>
+          <div class="grafiek"><canvas id="c-oorzaak"></canvas></div>
+          <p class="voet">Klik op een balk om die oorzaak te openen in de grafiekbouwer.</p>
+        </article>
+        <article class="kaart">
+          <header><h3>Per ploeg</h3><div class="kaart-acties"><select id="ploeg-maat" aria-label="Meetwaarde per ploeg"></select><button class="icon-knop" data-png="c-ploeg" title="Opslaan als afbeelding">⤓</button></div></header>
+          <div class="grafiek"><canvas id="c-ploeg"></canvas></div>
+          <p class="voet">Klik op een ploeg om erop te filteren.</p>
+        </article>
+        <article class="kaart">
+          <header><h3>Per functie</h3><div class="kaart-acties"><select id="functie-maat" aria-label="Meetwaarde per functie"></select><button class="icon-knop" data-png="c-functie" title="Opslaan als afbeelding">⤓</button></div></header>
+          <div class="grafiek"><canvas id="c-functie"></canvas></div>
+          <p class="voet">Klik op een functie om erop te filteren.</p>
+        </article>
+        <article class="kaart">
+          <header><h3>Waar gaan de roosterdagen naartoe?</h3><div class="kaart-acties"><button class="icon-knop" data-png="c-besteding" title="Opslaan als afbeelding">⤓</button></div></header>
+          <div class="grafiek"><canvas id="c-besteding"></canvas></div>
+        </article>
+        <article class="kaart breed">
+          <header><h3>Top 10 medewerkers met de meeste uitval</h3><div class="kaart-acties"><button class="icon-knop" data-png="c-top" title="Opslaan als afbeelding">⤓</button></div></header>
+          <div class="grafiek hoog"><canvas id="c-top"></canvas></div>
+          <p class="voet">Klik op een balk voor de details van die medewerker.</p>
+        </article>
+        <article class="kaart breed">
+          <header><h3>Signalen</h3></header>
+          <div id="signalen" class="signalen"></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- GRAFIEKBOUWER -->
+    <section class="paneel" data-paneel="bouwer" hidden>
+      <article class="kaart">
+        <header><h3>Maak je eigen grafiek</h3></header>
+        <div class="bouwer-opties">
+          <div class="veld"><label for="b-maat">Meetwaarde</label><select id="b-maat"></select></div>
+          <div class="veld"><label for="b-agg">Berekening</label><select id="b-agg"></select></div>
+          <div class="veld"><label for="b-dim">Indelen naar</label><select id="b-dim"></select></div>
+          <div class="veld"><label for="b-split">Uitsplitsen naar</label><select id="b-split"></select></div>
+          <div class="veld"><label for="b-type">Soort grafiek</label>
+            <select id="b-type">
+              <option value="bar">Staafdiagram</option>
+              <option value="hbar">Liggende staven</option>
+              <option value="line">Lijndiagram</option>
+              <option value="stacked">Gestapelde staven</option>
+              <option value="doughnut">Ringdiagram (aandeel)</option>
+            </select></div>
+          <div class="veld"><label for="b-sort">Sorteren</label>
+            <select id="b-sort">
+              <option value="natuurlijk">Op naam / volgorde</option>
+              <option value="aflopend">Hoogste eerst</option>
+              <option value="oplopend">Laagste eerst</option>
+            </select></div>
+          <div class="veld"><label for="b-top">Toon</label>
+            <select id="b-top"><option value="0">Alles</option><option value="5">Top 5</option><option value="10">Top 10</option><option value="15">Top 15</option></select></div>
+          <div class="veld"><label for="b-vergelijk">Vergelijk met</label><select id="b-vergelijk"><option value="">Niets</option></select></div>
+        </div>
+        <div class="kaart-acties rechts">
+          <button class="knop licht" type="button" id="b-bewaar">Grafiek bewaren als favoriet</button>
+          <button class="knop licht" type="button" data-png="c-bouwer">Opslaan als afbeelding</button>
+          <button class="knop licht" type="button" id="b-csv">Gegevens als CSV</button>
+        </div>
+        <div class="grafiek xl"><canvas id="c-bouwer"></canvas></div>
+        <p class="voet" id="b-voet"></p>
+      </article>
+      <article class="kaart">
+        <header><h3>Bewaarde grafieken</h3></header>
+        <div id="favorieten" class="favorieten"></div>
+      </article>
+      <article class="kaart">
+        <header><h3>Tabel bij de grafiek</h3></header>
+        <div class="tabel-wrap"><table id="b-tabel" class="tabel"></table></div>
+      </article>
+    </section>
+
+    <!-- MEDEWERKERS -->
+    <section class="paneel" data-paneel="medewerkers" hidden>
+      <article class="kaart">
+        <header>
+          <h3>Medewerkers</h3>
+          <div class="kaart-acties">
+            <label class="schakel"><input type="checkbox" id="m-permaand"> Per maand tonen</label>
+            <button class="knop licht" type="button" id="m-kolommen">Kolommen kiezen</button>
+            <button class="knop licht" type="button" id="m-csv">Exporteren (CSV)</button>
+          </div>
+        </header>
+        <div id="m-kolomkeuze" class="kolomkeuze" hidden></div>
+        <div class="tabel-wrap"><table id="m-tabel" class="tabel sorteerbaar"></table></div>
+        <p class="voet">Klik op een kolomkop om te sorteren, op een naam voor details. Een ⚠ betekent dat een signaalwaarde uit de instellingen is overschreden.</p>
+      </article>
+    </section>
+
+    <!-- KOPPELINGEN -->
+    <section class="paneel" data-paneel="koppelingen" hidden>
+      <p class="intro">Geef hier aan welke gegevens <strong>wel</strong> of juist <strong>niet</strong> aan elkaar gekoppeld horen te zijn. Het dashboard gebruikt dit om verbanden te tonen, verdachte verbanden te melden en gekoppelde velden samen te laten zien. De matrix laat zien hoe sterk twee velden in de cijfers echt samen bewegen.</p>
+      <div class="raster">
+        <article class="kaart">
+          <header><h3>Koppeling vastleggen</h3></header>
+          <form id="k-form" class="k-form">
+            <div class="veld"><label for="k-a">Veld A</label><select id="k-a"></select></div>
+            <div class="veld"><label for="k-b">Veld B</label><select id="k-b"></select></div>
+            <fieldset class="status-keuze">
+              <legend>Hoort dit bij elkaar?</legend>
+              <label><input type="radio" name="k-status" value="gekoppeld" checked> 🔗 Ja, gekoppeld</label>
+              <label><input type="radio" name="k-status" value="niet"> ⛔ Nee, juist niet gekoppeld</label>
+              <label><input type="radio" name="k-status" value="onbekend"> ❔ Nog uitzoeken</label>
+            </fieldset>
+            <div class="veld"><label for="k-notitie">Toelichting</label><textarea id="k-notitie" rows="3" placeholder="Bijv. waarom dit wel of niet bij elkaar hoort"></textarea></div>
+            <div class="knoppen"><button class="knop primair" type="submit">Opslaan</button><button class="knop licht" type="reset">Leegmaken</button></div>
+          </form>
+          <div id="k-paar" class="k-paar"></div>
+        </article>
+        <article class="kaart">
+          <header><h3>Verband in de cijfers</h3><div class="kaart-acties"><select id="k-niveau" aria-label="Niveau"><option value="regel">Per medewerker per maand</option><option value="mdw">Per medewerker (totaal)</option></select><button class="icon-knop" data-png="c-scatter" title="Opslaan als afbeelding">⤓</button></div></header>
+          <div class="grafiek hoog"><canvas id="c-scatter"></canvas></div>
+          <p class="voet" id="k-scatter-voet">Kies twee velden of klik op een vakje in de matrix.</p>
+        </article>
+        <article class="kaart breed">
+          <header><h3>Alle koppelingen</h3>
+            <div class="kaart-acties">
+              <select id="k-filter" aria-label="Filter op status"><option value="">Alle</option><option value="gekoppeld">🔗 Gekoppeld</option><option value="niet">⛔ Niet gekoppeld</option><option value="onbekend">❔ Nog uitzoeken</option></select>
+            </div>
+          </header>
+          <div class="tabel-wrap"><table id="k-lijst" class="tabel"></table></div>
+        </article>
+        <article class="kaart breed">
+          <header><h3>Suggesties</h3></header>
+          <div id="k-suggesties" class="signalen"></div>
+        </article>
+        <article class="kaart breed">
+          <header><h3>Samenhangmatrix</h3>
+            <div class="kaart-acties"><label class="schakel"><input type="checkbox" id="k-alleen-gemarkeerd"> Alleen gemarkeerde paren</label></div>
+          </header>
+          <div class="matrix-wrap"><table id="k-matrix" class="matrix"></table></div>
+          <div class="legenda" id="k-legenda"></div>
+        </article>
+        <article class="kaart breed">
+          <header><h3>Groepen van gekoppelde velden</h3></header>
+          <div id="k-groepen" class="groepen"></div>
+          <p class="voet">Velden die via koppelingen met elkaar verbonden zijn, vormen samen een groep. In het detailscherm van een medewerker worden ze naast elkaar getoond.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- INSTELLINGEN -->
+    <section class="paneel" data-paneel="instellingen" hidden>
+      <div class="raster">
+        <article class="kaart breed">
+          <header><h3>Formules: wat telt waar mee?</h3><div class="kaart-acties"><button class="knop licht" type="button" id="i-reset-formules">Terug naar Excel-formules</button></div></header>
+          <p class="intro">Bepaal per veld of het meetelt in de berekende velden. Standaard staan deze precies zoals in het Excel-sjabloon.</p>
+          <div class="tabel-wrap"><table id="i-formules" class="tabel"></table></div>
+          <p class="voet" id="i-formule-tekst"></p>
+        </article>
+        <article class="kaart">
+          <header><h3>Signaalwaarden</h3></header>
+          <form id="i-signalen" class="k-form"></form>
+        </article>
+        <article class="kaart">
+          <header><h3>Instellingen delen</h3></header>
+          <p>Alle keuzes (koppelingen, formules, signaalwaarden, veldnamen) worden automatisch in deze browser bewaard. Exporteer ze om ze te delen of om ze in de repo als standaard op te nemen (<code>config/koppelingen.json</code>).</p>
+          <div class="knoppen">
+            <button class="knop primair" type="button" id="i-export">Instellingen exporteren</button>
+            <label class="knop">Instellingen importeren<input type="file" accept=".json" id="i-import" hidden></label>
+            <button class="knop licht gevaar" type="button" id="i-reset">Alles terugzetten naar standaard</button>
+          </div>
+        </article>
+        <article class="kaart breed">
+          <header><h3>Velden</h3></header>
+          <p class="intro">Geef velden een eigen naam of verberg ze in het dashboard.</p>
+          <div class="tabel-wrap"><table id="i-velden" class="tabel"></table></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- GEGEVENS -->
+    <section class="paneel" data-paneel="data" hidden>
+      <div class="raster">
+        <article class="kaart">
+          <header><h3>Bestanden inlezen</h3></header>
+          <div class="dropzone" id="dropzone">
+            <p><strong>Sleep Excel-bestanden hierheen</strong> of</p>
+            <label class="knop primair">Bestand kiezen<input type="file" accept=".xlsx,.xls,.xlsm,.csv" multiple class="bestand-input" hidden></label>
+            <p class="hint">Per bestand of tabblad kies je daarna de maand. Een maand die al bestaat wordt vervangen.</p>
+          </div>
+          <div class="knoppen">
+            <button class="knop" type="button" data-actie="voorbeeld">Voorbeelddata laden</button>
+          </div>
+        </article>
+        <article class="kaart">
+          <header><h3>Back-up</h3></header>
+          <p>De gegevens staan alleen in deze browser. Maak een back-up om ze op een andere computer te laden.</p>
+          <div class="knoppen">
+            <button class="knop" type="button" id="d-export">Alle gegevens exporteren (JSON)</button>
+            <label class="knop">Back-up terugzetten<input type="file" accept=".json" id="d-import" hidden></label>
+            <button class="knop" type="button" id="d-csv">Alles als CSV</button>
+            <button class="knop licht gevaar" type="button" id="d-wis">Alle gegevens wissen</button>
+          </div>
+        </article>
+        <article class="kaart breed">
+          <header><h3>Ingelezen maanden</h3></header>
+          <div class="tabel-wrap"><table id="d-maanden" class="tabel"></table></div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="import-dialoog" class="dialoog">
+    <form method="dialog">
+      <h2>Maand kiezen</h2>
+      <p>Voor welke maand zijn deze gegevens?</p>
+      <div id="import-lijst"></div>
+      <div class="knoppen rechts">
+        <button class="knop licht" value="annuleer">Annuleren</button>
+        <button class="knop primair" value="ok" id="import-ok">Inlezen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="detail-dialoog" class="dialoog groot">
+    <div class="dialoog-kop"><h2 id="detail-titel"></h2><button class="icon-knop" id="detail-sluit" aria-label="Sluiten">✕</button></div>
+    <div id="detail-inhoud"></div>
+  </dialog>
+
+  <div id="melding" class="melding" role="status" aria-live="polite" hidden></div>
+
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="vendor/chart.umd.min.js"></script>
+  <script src="js/velden.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

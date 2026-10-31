@@ -1,0 +1,80 @@
+{
+  "versie": 1,
+  "formules": {
+    "gewerkt": {
+      "plus": [
+        "te_werken",
+        "reserveweek",
+        "extra_varen"
+      ],
+      "min": [
+        "ziekte",
+        "boven_sterkte",
+        "opleiding",
+        "werkgroep",
+        "omstandigheden",
+        "or",
+        "vakantie",
+        "gekocht",
+        "geboorteverlof"
+      ]
+    },
+    "pct_gewerkt": {
+      "teller": [
+        "gewerkt"
+      ],
+      "noemer": [
+        "te_werken"
+      ]
+    },
+    "pct_ziek": {
+      "teller": [
+        "ziekte",
+        "boven_sterkte"
+      ],
+      "noemer": [
+        "te_werken"
+      ]
+    }
+  },
+  "koppelingen": [
+    {
+      "a": "ziekte",
+      "b": "pct_ziek",
+      "status": "gekoppeld",
+      "notitie": "Ziekte telt mee in het ziekteverzuim (formule Excel)."
+    },
+    {
+      "a": "boven_sterkte",
+      "b": "pct_ziek",
+      "status": "onbekend",
+      "notitie": "In de Excel-formule telt uitval wegens boven de sterkte mee als ziekteverzuim. Klopt dat?"
+    },
+    {
+      "a": "gekocht",
+      "b": "gewerkt",
+      "status": "onbekend",
+      "notitie": "Gekochte vakantiedagen worden in Excel afgetrokken van de gewerkte dagen. Klopt dat?"
+    },
+    {
+      "a": "vakantie",
+      "b": "verlofsaldo",
+      "status": "gekoppeld",
+      "notitie": "Opname vakantie verlaagt het verlofsaldo."
+    },
+    {
+      "a": "ziekte",
+      "b": "loonsuppletie",
+      "status": "onbekend",
+      "notitie": ""
+    }
+  ],
+  "signalen": {
+    "verzuimBoven": 5,
+    "gewerktOnder": 80,
+    "verlofsaldoBoven": 40,
+    "afgewezenVanaf": 1
+  },
+  "favorieten": [],
+  "velden": {}
+}
