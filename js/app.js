@@ -1271,7 +1271,7 @@
       }
       const nt = e.target.closest('[data-naar-tab]');
       if (nt) { e.preventDefault(); kiesTab(nt.dataset.naarTab); }
-      const hl = e.target.closest('.hl-inhoud a, .hl-tekst a[href^="#hl-"]');
+      const hl = e.target.closest('.hl-inhoud a[href^="#hl-"], .hl-tekst a[href^="#hl-"]');
       if (hl) { e.preventDefault(); const doel = document.querySelector(hl.getAttribute('href')); if (doel) doel.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       const d = e.target.closest('[data-detail]');
       if (d) openDetail(d.dataset.detail);
