@@ -118,7 +118,7 @@
     const f = S.filter;
     const z = f.zoek.toLowerCase();
     return S.regels.filter(r =>
-      (!f.van || r.maand >= f.van) && (!f.tot || r.maand <= f.tot) &&
+      (behalve === 'periode' || ((!f.van || r.maand >= f.van) && (!f.tot || r.maand <= f.tot))) &&
       (behalve === 'ploeg' || !f.ploeg.size || f.ploeg.has(r.ploeg)) &&
       (behalve === 'functie' || !f.functie.size || f.functie.has(r.functie)) &&
       (behalve === 'type' || !f.type.size || f.type.has(r.type)) &&
@@ -141,7 +141,7 @@
       const set = S.filter[key];
       Array.from(set).forEach(v => { if (!waarden.includes(v)) set.delete(v); });
       const lijst = $('.multi-lijst', el);
-      lijst.innerHTML = '<div class="multi-acties"><input type="search" placeholder="Zoek…" aria-label="Zoek in lijst"><button class="knop licht" type="button" data-alles>Alle</button><button class="knop licht" type="button" data-geen>Geen</button></div>' +
+      lijst.innerHTML = '<div class="multi-acties"><input type="search" placeholder="Zoek…" aria-label="Zoek in lijst"><button class="knop licht" type="button" data-alles>Alle</button></div>' +
         waarden.map(v => '<label><input type="checkbox" value="' + esc(v) + '"' + (set.has(v) ? ' checked' : '') + '> ' + esc(v) + '</label>').join('');
       $('.multi-knop', el).textContent = !set.size ? 'Alle' : set.size === 1 ? Array.from(set)[0] : set.size + ' gekozen';
     });
@@ -198,7 +198,6 @@
       });
       lijst.addEventListener('click', e => {
         if (e.target.matches('[data-alles]')) { S.filter[key].clear(); vulFilters(); toepassen(); lijst.hidden = false; }
-        if (e.target.matches('[data-geen]')) { S.filter[key].clear(); uniek(key).forEach(v => S.filter[key].add(v)); vulFilters(); toepassen(); lijst.hidden = false; }
       });
     });
     document.addEventListener('click', () => $$('.multi-lijst').forEach(l => { l.hidden = true; }));
@@ -369,17 +368,23 @@
   function renderTrend() {
     const sel = $('#trend-maat');
     maatOpties(sel, S.trendMaat, { extra: '<option value="_pct">% gewerkt en % ziekteverzuim</option><option value="_dagen">Te werken en gewerkte dagen</option>' });
-    // Trend: alle maanden binnen de overige filters, maar de maandselectie wordt gemarkeerd.
-    const basis = filterRegels();
+    S.trendMaat = sel.value;
+    // Trend: alle maanden binnen de overige filters; de gekozen periode wordt gemarkeerd.
+    const basis = filterRegels('periode');
     const maanden = Array.from(new Set(basis.map(r => r.maand))).sort();
     const per = B.groepeer(basis, 'maand');
     let keys = S.trendMaat === '_pct' ? ['pct_gewerkt', 'pct_ziek'] : S.trendMaat === '_dagen' ? ['te_werken', 'gewerkt'] : [S.trendMaat];
     keys = keys.filter(k => veldDef(k));
+    const inPeriode = m => (!S.filter.van || m >= S.filter.van) && (!S.filter.tot || m <= S.filter.tot);
+    const allesGekozen = maanden.every(inPeriode);
     const ds = keys.map((k, i) => ({
       label: label(k), _key: k,
       data: maanden.map(m => B.meet(per.get(m) || [], k, 'som', S.config)),
-      borderColor: reeksKleur(i), backgroundColor: reeksKleur(i), borderWidth: 2, pointRadius: 4, pointHoverRadius: 6, cubicInterpolationMode: 'monotone',
-      pointBorderColor: css('--vlak'), pointBorderWidth: 2,
+      borderColor: reeksKleur(i), backgroundColor: reeksKleur(i), borderWidth: 2, cubicInterpolationMode: 'monotone',
+      // Maanden buiten de gekozen periode krijgen een open punt.
+      pointRadius: 4, pointHoverRadius: 6, pointBorderWidth: 2,
+      pointBackgroundColor: maanden.map(m => inPeriode(m) ? reeksKleur(i) : css('--vlak')),
+      pointBorderColor: maanden.map(m => inPeriode(m) ? css('--vlak') : reeksKleur(i)),
     }));
     teken('c-trend', {
       type: 'line',
@@ -393,7 +398,7 @@
     });
     $('#trend-voet').textContent = maanden.length < 2
       ? 'Lees meer maanden in om een verloop te zien. Klik op een punt om op die maand te filteren.'
-      : 'Toont alle ingelezen maanden met de overige filters. Klik op een punt om op die maand te filteren.';
+      : 'Toont alle ingelezen maanden met de overige filters' + (allesGekozen ? '' : '; maanden buiten de gekozen periode hebben een open punt') + '. Klik op een punt om op die maand te filteren.';
   }
 
   function renderOorzaak() {
@@ -415,6 +420,7 @@
   function renderPerDim(dim, id, maat) {
     const sel = $('#' + dim + '-maat');
     maatOpties(sel, maat);
+    if (sel.value !== maat) { maat = sel.value; if (dim === 'ploeg') S.ploegMaat = maat; else S.functieMaat = maat; }
     const basis = filterRegels(dim);
     const per = B.groepeer(basis, dim);
     const labels = Array.from(per.keys()).sort(natuurlijk);
@@ -511,7 +517,7 @@
       const rs = m._regels.slice().sort((a, b) => (a.maand < b.maand ? -1 : 1));
       let reeks = 0, max = 0;
       rs.forEach(x => { if (x.te_werken && x.ziekte >= x.te_werken / 2) { reeks++; max = Math.max(max, reeks); } else reeks = 0; });
-      if (max >= 3) out.push({ ico: '🩺', t: m.naam + ': ' + max + ' maanden achter elkaar voor meer dan de helft ziek', mdw: m.mdw, ernst: 60 });
+      if (max >= 3) out.push({ ico: '🩺', t: m.naam + ': ' + max + ' maanden achter elkaar de helft of meer van de roosterdagen ziek', mdw: m.mdw, ernst: 60 });
     });
     return out.sort((a, b) => b.ernst - a.ernst);
   }
@@ -604,7 +610,7 @@
       cfg = {
         type: 'doughnut',
         data: { labels: lab, datasets: [{ data: dat, backgroundColor: lab.map((l, i) => reeksKleur(i)), borderColor: css('--vlak'), borderWidth: 2 }] },
-        options: { cutout: '60%', plugins: { legend: { position: 'right' }, tooltip: { callbacks: { label: c => ' ' + c.label + ': ' + fmt(c.parsed, b.maat) + (tot ? ' (' + nf1.format(c.parsed / tot * 100) + ' %)' : '') } } } },
+        options: { cutout: '60%', plugins: { legend: { position: 'right' }, tooltip: { callbacks: { label: c => ' ' + c.label + ': ' + fmt(c.parsed, b.agg === 'aantal' ? null : b.maat) + (tot ? ' (' + nf1.format(c.parsed / tot * 100) + ' %)' : '') } } } },
       };
     } else {
       const isLijn = b.type === 'line';
@@ -615,14 +621,14 @@
           datasets: reeksen.map((x, i) => {
             const kleur = reeksKleur(i);
             return isLijn
-              ? { label: x.l, _key: x.key, data: x.data, borderColor: kleur, backgroundColor: kleur, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6, pointBorderColor: css('--vlak'), pointBorderWidth: 2, cubicInterpolationMode: 'monotone', spanGaps: true }
-              : Object.assign({ label: x.l, _key: x.key, data: x.data }, staafStijl(kleur, gestapeld ? { borderRadius: 0, borderWidth: horizontaal ? { right: 2 } : { top: 2 } } : {}));
+              ? { label: x.l, _key: b.agg === 'aantal' ? null : x.key, data: x.data, borderColor: kleur, backgroundColor: kleur, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6, pointBorderColor: css('--vlak'), pointBorderWidth: 2, cubicInterpolationMode: 'monotone', spanGaps: true }
+              : Object.assign({ label: x.l, _key: b.agg === 'aantal' ? null : x.key, data: x.data }, staafStijl(kleur, gestapeld ? { borderRadius: 0, borderWidth: horizontaal ? { right: 2 } : { top: 2 } } : {}));
           }),
         },
         options: {
           indexAxis: horizontaal ? 'y' : 'x',
           interaction: { mode: 'index', intersect: false, axis: horizontaal ? 'y' : 'x' },
-          plugins: { legend: legendaNodig(reeksen.length), tooltip: tooltipWaarde(b.maat) },
+          plugins: { legend: legendaNodig(reeksen.length), tooltip: tooltipWaarde(b.agg === 'aantal' ? null : b.maat) },
           scales: assen({ horizontaal, stacked: gestapeld, pct: isPct(b.maat) && b.agg !== 'aantal' }),
           onClick: (e, els) => {
             if (!els.length) return;
@@ -1251,7 +1257,10 @@
       if (S.tab === 'data') renderData();
     });
     $('#import-ok').addEventListener('click', e => {
-      if ($$('[data-import]').some(i => !i.value)) { e.preventDefault(); melding('Kies voor elk bestand een maand'); }
+      const ms = $$('[data-import]').map(i => i.value);
+      if (ms.some(m => !m)) { e.preventDefault(); melding('Kies voor elk bestand een maand'); return; }
+      const dubbel = ms.find((m, i) => ms.indexOf(m) !== i);
+      if (dubbel) { e.preventDefault(); melding(B.maandLabel(dubbel) + ' is meer dan eens gekozen. Kies voor elk tabblad een eigen maand.'); }
     });
     document.addEventListener('change', e => { if (e.target.matches('.bestand-input')) { leesBestanden(Array.from(e.target.files)); e.target.value = ''; } });
     document.addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('slepen'); });
@@ -1280,7 +1289,19 @@
       const k = e.target.closest('[data-kpi]');
       if (k && k.dataset.kpi !== 'mdw') openInBouwer({ maat: k.dataset.kpi, dim: 'maand', type: 'line', split: '', agg: 'som', sort: 'natuurlijk', top: '0' });
       const p = e.target.closest('[data-png]');
-      if (p) { const g = S.grafieken[p.dataset.png]; if (g) { const a = document.createElement('a'); a.href = g.toBase64Image('image/png', 1); a.download = p.dataset.png.replace('c-', 'grafiek-') + '.png'; a.click(); } }
+      if (p) {
+        const g = S.grafieken[p.dataset.png];
+        if (g) {
+          // Grafieken zijn doorzichtig; met achtergrond blijft de afbeelding leesbaar in Word, PowerPoint en mail.
+          const c = document.createElement('canvas');
+          c.width = g.canvas.width; c.height = g.canvas.height;
+          const ctx = c.getContext('2d');
+          ctx.fillStyle = css('--vlak') || '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+          ctx.drawImage(g.canvas, 0, 0);
+          const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = p.dataset.png.replace('c-', 'grafiek-') + '.png';
+          document.body.appendChild(a); a.click(); a.remove();
+        }
+      }
     });
     $('#d-maanden').addEventListener('click', e => {
       const w = e.target.closest('[data-d-weg]'); if (!w) return;
@@ -1294,7 +1315,7 @@
       try {
         const j = JSON.parse(await f.text());
         if (!j.data || !j.data.maanden) throw new Error('geen data');
-        if (!confirm('De huidige gegevens worden vervangen door de back-up. Doorgaan?')) return;
+        if (!confirm('De huidige gegevens worden vervangen door de back-up. Doorgaan?')) { e.target.value = ''; return; }
         S.data = j.data; S.data.extraVelden = S.data.extraVelden || [];
         if (j.config && confirm('De back-up bevat ook instellingen (koppelingen, formules). Ook die terugzetten?')) { S.config = B.vulConfigAan(j.config); B.bewaarConfig(S.config); }
         B.bewaarData(S.data); herbereken(); renderData(); melding('Back-up teruggezet');

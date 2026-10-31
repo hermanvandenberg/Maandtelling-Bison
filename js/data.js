@@ -43,12 +43,23 @@
     if (!c || typeof c !== 'object') return s;
     return {
       versie: 1,
-      formules: Object.assign(s.formules, c.formules || {}),
+      formules: vulFormulesAan(s.formules, c.formules),
       koppelingen: Array.isArray(c.koppelingen) ? c.koppelingen : s.koppelingen,
       signalen: Object.assign(s.signalen, c.signalen || {}),
       velden: Object.assign({}, c.velden || {}),
       favorieten: Array.isArray(c.favorieten) ? c.favorieten : [],
     };
+  }
+  // Onvolledige of beschadigde formules (bijv. uit een oud instellingenbestand) aanvullen met de standaard.
+  function vulFormulesAan(standaard, eigen) {
+    const uit = kopie(standaard);
+    if (!eigen || typeof eigen !== 'object') return uit;
+    Object.keys(uit).forEach(naam => {
+      const e = eigen[naam];
+      if (!e || typeof e !== 'object') return;
+      Object.keys(uit[naam]).forEach(deel => { if (Array.isArray(e[deel])) uit[naam][deel] = e[deel].filter(k => typeof k === 'string'); });
+    });
+    return uit;
   }
   function laadConfig() {
     const c = veiligLezen(OPSLAG_CONFIG);
@@ -119,6 +130,27 @@
     return -1;
   }
 
+  // Regels als "Totaal" of "Gemiddelde" onderaan het blad zijn geen medewerkers.
+  function isTotaalRegel(naam) {
+    return /^(sub)?totaa?l|^gemiddeld|^som$|^totals?$/.test(norm(naam));
+  }
+  function isGetal(v) {
+    if (v == null || v === '') return false;
+    if (typeof v === 'number') return isFinite(v);
+    return /^\s*-?\d+([.,]\d+)?\s*%?\s*$/.test(String(v));
+  }
+  // Een titel boven de kopregel, zoals "Maandtelling oktober 2026", bepaalt ook de maand.
+  function maandBovenKop(rijen, kr) {
+    for (let r = 0; r < kr; r++) {
+      for (const c of rijen[r] || []) {
+        if (c == null || c === '') continue;
+        const m = c instanceof Date ? normaliseerMaandWaarde(c) : herkenMaand(String(c));
+        if (m) return m;
+      }
+    }
+    return null;
+  }
+
   /** Leest een werkmap en geeft per tabblad een lijst regels terug. */
   function leesWerkmap(arrayBuffer, bestandsnaam) {
     const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
@@ -129,21 +161,25 @@
       const kr = vindKopRij(rijen);
       if (kr < 0) return;
       const { kaart, extra } = koppelKolommen(rijen[kr]);
-      const regels = [];
+      const ruw = [];
       for (let r = kr + 1; r < rijen.length; r++) {
         const rij = rijen[r] || [];
         const reg = {};
         Object.keys(kaart).forEach(i => { reg[kaart[i]] = rij[i]; });
         if (!reg.naam || String(reg.naam).trim() === '') continue;
-        regels.push(normaliseerRegel(reg, extra));
+        if (isTotaalRegel(reg.naam)) continue;
+        ruw.push(reg);
       }
-      if (!regels.length) return;
+      if (!ruw.length) return;
+      // Extra kolommen alleen meenemen als er echt getallen in staan (geen tekstkolommen zoals opmerkingen).
+      const extraGetal = extra.filter(x => ruw.some(reg => isGetal(reg[x.key])));
+      const regels = ruw.map(reg => normaliseerRegel(reg, extraGetal));
       const heeftMaandKolom = regels.some(r => r.maand);
       bladen.push({
         blad: naam,
         regels,
-        extra,
-        maand: herkenMaand(naam) || herkenMaand(bestandsnaam) || null,
+        extra: extraGetal,
+        maand: herkenMaand(naam) || maandBovenKop(rijen, kr) || herkenMaand(bestandsnaam) || null,
         heeftMaandKolom,
       });
     });
@@ -152,7 +188,11 @@
 
   function normaliseerMaandWaarde(v) {
     if (v == null || v === '') return null;
-    if (v instanceof Date) return v.getFullYear() + '-' + String(v.getMonth() + 1).padStart(2, '0');
+    if (v instanceof Date) {
+      // Excel-datums komen soms een paar seconden vóór middernacht binnen (tijdzone); 12 uur marge voorkomt de verkeerde maand.
+      const d = new Date(v.getTime() + 12 * 3600 * 1000);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    }
     if (typeof v === 'number' && v > 20000) { // Excel-datumgetal
       const d = new Date(Math.round((v - 25569) * 86400 * 1000));
       return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
