@@ -221,6 +221,7 @@
     $('#bron-info').textContent = heeft
       ? S.maanden.length + ' maand' + (S.maanden.length === 1 ? '' : 'en') + ' (' + B.maandLabel(S.maanden[0], true) + (S.maanden.length > 1 ? ' – ' + B.maandLabel(S.maanden[S.maanden.length - 1], true) : '') + ') · ' + n + ' medewerkers'
       : 'Nog geen gegevens geladen';
+    if (S.maanden.some(m => isVoorbeeld(S.data.maanden[m]))) $('#bron-info').textContent += ' · let op: bevat voorbeelddata';
     vulFilters();
     toepassen();
   }
@@ -1225,6 +1226,12 @@
   function initData() {
     $('#import-dialoog').addEventListener('close', () => {
       if ($('#import-dialoog').returnValue !== 'ok') { wachtrij = []; return; }
+      // Voorbeelddata en echte gegevens mogen niet door elkaar lopen.
+      const voorbeeld = Object.keys(S.data.maanden).filter(m => isVoorbeeld(S.data.maanden[m]));
+      if (voorbeeld.length && confirm('Er staat nog voorbeelddata (verzonnen namen en cijfers) in het dashboard. ' +
+        'Die loopt anders door je echte gegevens heen.\n\nOK = voorbeelddata eerst verwijderen (aanbevolen)\nAnnuleren = voorbeelddata laten staan')) {
+        voorbeeld.forEach(m => { delete S.data.maanden[m]; });
+      }
       let n = 0;
       $$('[data-import]').forEach(inp => {
         const w = wachtrij[+inp.dataset.import];
@@ -1298,6 +1305,8 @@
       S.data = { maanden: {}, extraVelden: [] }; B.bewaarData(S.data); herbereken(); renderData();
     });
   }
+
+  function isVoorbeeld(maand) { return !!(maand && (maand.voorbeeld || maand.bron === 'Voorbeelddata')); }
 
   /* ================= Start ================= */
   async function standaardConfig() {
