@@ -34,7 +34,7 @@ Een volledige handleiding staat in het tabblad **Handleiding** van het dashboard
 | **Instellingen** | Pas aan wat meetelt in *gewerkte dagen*, *% gewerkt* en *% ziekteverzuim* (standaard precies de Excel-formules), stel signaalwaarden in, hernoem of verberg velden en exporteer/importeer alle instellingen. |
 | **Gegevens** | Bestanden inlezen, maanden beheren, back-up maken en terugzetten, alles exporteren als CSV. |
 
-Filters bovenaan (periode, ploeg, functie, dienstverband, medewerker, zoeken) werken op alle onderdelen.
+Filters bovenaan (periode, ploeg, functie, dienstverband, medewerker, zoeken) werken op alle onderdelen. Met **PDF maken** in de filterbalk kies je welke onderdelen in een PDF komen, om te mailen of te printen.
 
 ## Instellingen delen
 
