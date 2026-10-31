@@ -360,7 +360,7 @@
           afgewezen, verlofsaldo: p.saldo + 2 * (10 - m), loonsuppletie: loon,
         };
       });
-      data.maanden[ym] = { bron: 'Voorbeelddata', ingelezen: new Date().toISOString(), regels };
+      data.maanden[ym] = { bron: 'Voorbeelddata', voorbeeld: true, ingelezen: new Date().toISOString(), regels };
     }
     return data;
   }
