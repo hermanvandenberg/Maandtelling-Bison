@@ -1,0 +1,7 @@
+# Echte maandtellingen nooit in de repo zetten
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+maandtelling-backup-*.json
+.DS_Store
