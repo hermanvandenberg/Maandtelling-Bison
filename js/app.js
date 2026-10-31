@@ -254,6 +254,7 @@
     $$('.paneel').forEach(p => { p.hidden = p.dataset.paneel !== t || (!heeft && !ZONDER_DATA.includes(t)); });
     $('#leeg').hidden = heeft || ZONDER_DATA.includes(t);
     bewaarUi();
+    zetKopHoogte();
     renderTab();
   }
 
@@ -1322,6 +1323,15 @@
     return B.kopie(B.STANDAARD_CONFIG);
   }
 
+  // Hoogte van de vaste kopbalk(en), zodat de inhoudsopgave van de handleiding eronder blijft staan.
+  function zetKopHoogte() {
+    const top = $('.topbar'), fb = $('#filterbalk');
+    const vast = el => el && !el.hidden && getComputedStyle(el).position === 'sticky';
+    let h = vast(top) ? top.offsetHeight : 0;
+    if (vast(fb)) { fb.style.top = h + 'px'; h += fb.offsetHeight; }
+    document.documentElement.style.setProperty('--kop', h + 'px');
+  }
+
   function zetThema() {
     if (S.thema) document.documentElement.setAttribute('data-theme', S.thema);
     else document.documentElement.removeAttribute('data-theme');
@@ -1346,6 +1356,7 @@
     initFilters(); initBouwer(); initMedewerkers(); initKoppelingen(); initInstellingen(); initData();
     herbereken();
     kiesTab(S.tab || 'overzicht');
+    window.addEventListener('resize', zetKopHoogte);
   }
 
   window.BISON.app = S;
