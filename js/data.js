@@ -151,6 +151,79 @@
     return null;
   }
 
+  /* ---------- Soort van een extra kolom ---------- */
+  // getal   = meetwaarde (optellen, gemiddelde, grafieken, samenhang)
+  // kenmerk = indeling zoals ploeg of functie (filteren, indelen, uitsplitsen)
+  // datum   = kenmerk dat per maand wordt ingedeeld
+  // tekst   = vrije tekst zoals opmerkingen (alleen in tabel en detailscherm)
+  const SOORTEN = ['getal', 'kenmerk', 'datum', 'tekst'];
+  function isLeeg(v) { return v == null || (typeof v === 'string' && v.trim() === ''); }
+  function isDatumTekst(v) {
+    return typeof v === 'string' && /^\s*(\d{1,2}[-/.]\d{1,2}[-/.](19|20)\d\d|(19|20)\d\d[-/.]\d{1,2}[-/.]\d{1,2})\s*$/.test(v);
+  }
+  function herkenSoort(kop, waarden) {
+    const w = waarden.filter(v => !isLeeg(v));
+    if (!w.length) return null;
+    if (w.every(v => v instanceof Date || isDatumTekst(v))) return 'datum';
+    // Een enkele "n.v.t." of "-" tussen de getallen maakt er nog geen tekstkolom van.
+    const getallen = w.filter(isGetal).length;
+    if (getallen / w.length >= 0.8) {
+      // Nummers en codes (bijv. "Schip nr" met 1, 2, 3) zijn een indeling, geen hoeveelheid.
+      if (/(^|\s)(nr|nummer|code|id)(\s|$)/.test(norm(kop)) && w.every(v => Number.isInteger(getal(v)))) return 'kenmerk';
+      return 'getal';
+    }
+    if (/opmerking|toelichting|notitie|omschrijving|bijzonderhe|reden|commentaar/.test(norm(kop))) return 'tekst';
+    const uniek = new Set(w.map(v => String(v).trim().toLowerCase())).size;
+    const gemLengte = w.reduce((s, v) => s + String(v).length, 0) / w.length;
+    if (gemLengte > 40 || (uniek > 15 && uniek / w.length > 0.6)) return 'tekst';
+    return 'kenmerk';
+  }
+  function datumIso(v) {
+    if (v instanceof Date) {
+      const d = new Date(v.getTime() + 12 * 3600 * 1000);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    let m = String(v).trim().match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+    if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+    m = String(v).trim().match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+    if (m) return m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0');
+    return String(v).trim();
+  }
+  // Wat er van een extra kolom wordt bewaard: getallen als getal, de rest als tekst. Zo kan de soort later nog gewisseld worden.
+  function bewaarWaarde(v, soort) {
+    if (isLeeg(v)) return soort === 'getal' ? 0 : '';
+    if (soort === 'getal') return isGetal(v) ? getal(v) : 0;
+    if (soort === 'datum') return datumIso(v);
+    if (v instanceof Date) return datumIso(v);
+    return typeof v === 'number' ? v : String(v).trim();
+  }
+  /** Soort zoals die nu geldt: eigen keuze uit Instellingen gaat voor de herkende soort. */
+  function extraSoort(x, config) {
+    const eigen = config && config.velden && config.velden[x.key] && config.velden[x.key].soort;
+    return SOORTEN.includes(eigen) ? eigen : (SOORTEN.includes(x.soort) ? x.soort : 'getal');
+  }
+  /** Waarde van een extra kolom zoals het dashboard hem gebruikt. */
+  function extraWaarde(v, soort) {
+    if (soort === 'getal') return typeof v === 'number' ? v : (isGetal(v) ? getal(v) : 0);
+    if (soort === 'kenmerk') return isLeeg(v) ? 'Onbekend' : String(v).trim();
+    if (soort === 'datum') {
+      if (isLeeg(v)) return 'Onbekend';
+      const iso = typeof v === 'number' && v > 20000 ? datumIso(new Date(Math.round((v - 25569) * 86400 * 1000))) : datumIso(v);
+      return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.slice(0, 7) : 'Onbekend';
+    }
+    return isLeeg(v) ? '' : String(v).trim();
+  }
+  /** Extra kolommen samenvoegen. Een bekende kolom die nu anders gevuld is, wordt tekst in plaats van getal als dat nodig is. */
+  function voegExtraToe(lijst, nieuw) {
+    (nieuw || []).forEach(x => {
+      const oud = lijst.find(e => e.key === x.key);
+      if (!oud) { lijst.push({ key: x.key, label: x.label, soort: x.soort }); return; }
+      if (!oud.soort) oud.soort = 'getal';
+      if (oud.soort === 'getal' && x.soort !== 'getal') oud.soort = x.soort;
+    });
+    return lijst;
+  }
+
   /** Leest een werkmap en geeft per tabblad een lijst regels terug. */
   function leesWerkmap(arrayBuffer, bestandsnaam) {
     const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
@@ -171,14 +244,14 @@
         ruw.push(reg);
       }
       if (!ruw.length) return;
-      // Extra kolommen alleen meenemen als er echt getallen in staan (geen tekstkolommen zoals opmerkingen).
-      const extraGetal = extra.filter(x => ruw.some(reg => isGetal(reg[x.key])));
-      const regels = ruw.map(reg => normaliseerRegel(reg, extraGetal));
+      // Extra kolommen: per kolom bepalen wat erin staat (getallen, kenmerken, datums of vrije tekst). Lege kolommen vallen weg.
+      const extraGevuld = extra.map(x => Object.assign(x, { soort: herkenSoort(x.label, ruw.map(reg => reg[x.key])) })).filter(x => x.soort);
+      const regels = ruw.map(reg => normaliseerRegel(reg, extraGevuld));
       const heeftMaandKolom = regels.some(r => r.maand);
       bladen.push({
         blad: naam,
         regels,
-        extra: extraGetal,
+        extra: extraGevuld,
         maand: herkenMaand(naam) || maandBovenKop(rijen, kr) || herkenMaand(bestandsnaam) || null,
         heeftMaandKolom,
       });
@@ -209,7 +282,7 @@
     uit.type = /^\d+$/.test(uit.mdw) ? 'Vast' : (uit.mdw ? uit.mdw.charAt(0).toUpperCase() + uit.mdw.slice(1) : 'Onbekend');
     if (reg.maand != null) uit.maand = normaliseerMaandWaarde(reg.maand);
     B.MEETWAARDEN.forEach(m => { if (!m.berekend) uit[m.key] = getal(reg[m.key]); });
-    (extra || []).forEach(x => { uit[x.key] = getal(reg[x.key]); });
+    (extra || []).forEach(x => { uit[x.key] = bewaarWaarde(reg[x.key], x.soort); });
     // Niet-numerieke nummers (bijv. "Uitzendkracht") zijn niet uniek: gebruik dan de naam als sleutel.
     uit.mdwNr = uit.mdw;
     if (!/^\d+$/.test(uit.mdw)) uit.mdw = uit.naam;
@@ -217,7 +290,7 @@
   }
 
   /* ---------- Berekeningen ---------- */
-  function som(r, keys) { return (keys || []).reduce((s, k) => s + (r[k] || 0), 0); }
+  function som(r, keys) { return (keys || []).reduce((s, k) => s + (typeof r[k] === 'number' && isFinite(r[k]) ? r[k] : 0), 0); }
 
   /** Voegt berekende velden toe aan een regel volgens de formules in de config. */
   function bereken(r, config) {
@@ -233,10 +306,12 @@
   /** Alle regels als platte lijst, met maand en berekende velden. */
   function alleRegels(data, config) {
     const uit = [];
+    const extra = (data.extraVelden || []).map(x => ({ key: x.key, soort: extraSoort(x, config) }));
     Object.keys(data.maanden).sort().forEach(ym => {
       data.maanden[ym].regels.forEach(r => {
         const k = Object.assign({}, r);
         k.maand = ym;
+        extra.forEach(x => { k[x.key] = extraWaarde(r[x.key], x.soort); });
         uit.push(bereken(k, config));
       });
     });
@@ -299,11 +374,13 @@
   }
 
   /** Per medewerker de regels samenvoegen tot één regel (voor tabellen en correlaties). */
-  function perMedewerker(regels, config, velden) {
+  function perMedewerker(regels, config, velden, kenmerken) {
     const out = [];
     groepeer(regels, 'mdw').forEach((rs, mdw) => {
       const laatste = rs.reduce((a, b) => (a.maand > b.maand ? a : b));
       const r = { mdw, naam: laatste.naam, functie: laatste.functie, ploeg: laatste.ploeg, type: laatste.type, maanden: rs.length, _regels: rs };
+      // Kenmerken en tekst uit extra kolommen: de stand van de laatste maand.
+      (kenmerken || []).forEach(k => { r[k] = laatste[k]; });
       velden.forEach(v => { r[v.key] = meet(rs, v.key, 'som', config); });
       out.push(r);
     });
@@ -409,5 +486,6 @@
     norm, getal, laadData, bewaarData, laadConfig, bewaarConfig, vulConfigAan, kopie,
     herkenMaand, maandLabel, leesWerkmap, bereken, alleRegels, AGGREGATIES, meet, groepeer,
     perMedewerker, correlatie, pearson, maakVoorbeeld, MAANDEN,
+    SOORTEN, herkenSoort, extraSoort, extraWaarde, voegExtraToe,
   });
 })();

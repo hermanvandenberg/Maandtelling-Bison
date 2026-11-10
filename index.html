@@ -239,7 +239,7 @@
         </article>
         <article class="kaart breed">
           <header><h3>Velden</h3></header>
-          <p class="intro">Geef velden een eigen naam of verberg ze in het dashboard.</p>
+          <p class="intro">Geef velden een eigen naam of verberg ze in het dashboard. Bij eigen kolommen uit Excel kies je ook de soort: getal, kenmerk (zoals ploeg), datum of tekst.</p>
           <div class="tabel-wrap"><table id="i-velden" class="tabel"></table></div>
         </article>
       </div>
@@ -254,6 +254,7 @@
           <ol>
             <li><a href="#hl-wat">Wat is het dashboard?</a></li>
             <li><a href="#hl-start">Aan de slag</a></li>
+            <li><a href="#hl-extra">Eigen kolommen toevoegen</a></li>
             <li><a href="#hl-filters">Filteren en klikken</a></li>
             <li><a href="#hl-overzicht">Overzicht</a></li>
             <li><a href="#hl-bouwer">Grafiekbouwer</a></li>
@@ -279,9 +280,31 @@
             <li>Herhaal dit voor elke maand. Lees je een maand opnieuw in, dan vervangt die de oude versie. Een fout verbeteren gaat dus door het verbeterde bestand opnieuw in te lezen.</li>
           </ol>
           <ul>
-            <li>Gebruik het vaste sjabloon en verander de kolomkoppen niet. De volgorde van de kolommen maakt niet uit.</li>
+            <li>Gebruik het vaste sjabloon en verander de bestaande kolomkoppen niet. De volgorde van de kolommen maakt niet uit.</li>
+            <li>Je mag zelf kolommen toevoegen, bijvoorbeeld Schip, Overuren of Opmerking. Die neemt het dashboard vanzelf over (zie <a href="#hl-extra">Eigen kolommen toevoegen</a>).</li>
             <li>Heeft één Excel-bestand meerdere tabbladen, één per maand? Dan kies je per tabblad de maand.</li>
             <li>Eerst rondkijken zonder echte gegevens? Klik op <strong>Voorbeelddata laden</strong>; die namen en cijfers zijn verzonnen. Lees je daarna een echt bestand in, dan vraagt het dashboard of de voorbeelddata eerst weg moet. Kies OK, anders lopen ze door elkaar.</li>
+          </ul>
+
+          <h2 id="hl-extra">Eigen kolommen toevoegen</h2>
+          <p>Wil je iets bijhouden dat niet in het sjabloon staat? Voeg in Excel een kolom toe met een duidelijke kop in dezelfde rij als de andere koppen, en vul hem per medewerker in. Na het inlezen zit de kolom in het hele dashboard. Je hoeft verder niets in te stellen.</p>
+          <p>Het dashboard kijkt wat er in de kolom staat en kiest daarbij de soort:</p>
+          <div class="tabel-wrap"><table class="tabel">
+            <thead><tr><th>Soort</th><th>Wanneer</th><th>Wat je ermee kunt</th></tr></thead>
+            <tbody>
+              <tr><td>Getal</td><td>De kolom bevat getallen, bijvoorbeeld Overuren</td><td>Alles wat met de vaste cijfers kan: Grafiekbouwer, Medewerkers, detailscherm, Koppelingen en samenhangmatrix, en meetellen in de formules bij Instellingen</td></tr>
+              <tr><td>Kenmerk</td><td>Korte tekst die vaak terugkomt, bijvoorbeeld Schip of Team; ook een kolom met nummers als de kop "nr", "nummer" of "code" bevat</td><td>Een eigen filter in de filterbalk, indelen en uitsplitsen in de Grafiekbouwer, koppelen in Koppelingen, en een kolom in de medewerkerstabel</td></tr>
+              <tr><td>Datum</td><td>De kolom bevat datums, bijvoorbeeld Datum in dienst</td><td>Net als een kenmerk, ingedeeld per maand</td></tr>
+              <tr><td>Tekst</td><td>Lange of steeds andere tekst, of een kop als Opmerking of Toelichting</td><td>Zichtbaar in de medewerkerstabel, het detailscherm, de CSV-export en de PDF</td></tr>
+            </tbody>
+          </table></div>
+          <ul>
+            <li>Onder <strong>Gegevens → Extra kolommen</strong> zie je welke kolommen zijn overgenomen en als welke soort. Bij het inlezen staat dat ook al in het venster.</li>
+            <li>Klopt de soort niet? Kies een andere bij <strong>Instellingen → Velden</strong>. Daar kun je de kolom ook een andere naam geven of verbergen.</li>
+            <li>Een extra getal telt niet vanzelf mee in Gewerkte dagen of het ziekteverzuim. Wil je dat wel, zet het dan aan bij <strong>Instellingen → Formules</strong>. Het verschijnt dan ook in de grafieken over uitval op het Overzicht.</li>
+            <li>Nieuwe kolommen komen vanzelf in de medewerkerstabel. Kolommen die je zelf uitzette bij Kolommen kiezen, blijven uit.</li>
+            <li>Staat een kolom maar in een paar maanden? Dan is hij in de andere maanden leeg (0 bij een getal, Onbekend bij een kenmerk).</li>
+            <li>Kolommen die je eerder toevoegde dan deze versie van het dashboard, lees je opnieuw in om ook tekst en datums mee te krijgen.</li>
           </ul>
 
           <h2 id="hl-filters">Filteren en klikken</h2>
@@ -295,6 +318,7 @@
               <tr><td>Dienstverband</td><td>Vast personeel of uitzendkrachten</td></tr>
               <tr><td>Medewerker</td><td>Een of meer personen; met het zoekvak in de lijst vind je snel een naam</td></tr>
               <tr><td>Zoeken</td><td>Typ een deel van een naam of personeelsnummer</td></tr>
+              <tr><td>Eigen kenmerken</td><td>Heb je zelf een kolom zoals Schip toegevoegd, dan krijgt die hier vanzelf een eigen filter</td></tr>
             </tbody>
           </table></div>
           <p>Actieve filters staan als labels onder de balk. Klik op het kruisje om er een weg te halen, of op <strong>Filters wissen</strong> om opnieuw te beginnen.</p>
@@ -320,7 +344,7 @@
             <tbody>
               <tr><td>Meetwaarde</td><td>Welk cijfer, bijvoorbeeld ziektedagen of % gewerkt</td></tr>
               <tr><td>Berekening</td><td>Totaal, gemiddelde per medewerker, gemiddelde per regel, mediaan, hoogste, laagste of het aantal keren boven 0</td></tr>
-              <tr><td>Indelen naar</td><td>Per maand, ploeg, functie, medewerker of dienstverband</td></tr>
+              <tr><td>Indelen naar</td><td>Per maand, ploeg, functie, medewerker of dienstverband, of een eigen kenmerk zoals Schip</td></tr>
               <tr><td>Uitsplitsen naar</td><td>Een tweede indeling met een eigen kleur, bijvoorbeeld per ploeg uitgesplitst naar functie</td></tr>
               <tr><td>Soort grafiek</td><td>Staven, liggende staven, lijn, gestapelde staven of ringdiagram</td></tr>
               <tr><td>Sorteren en Toon</td><td>Hoogste of laagste eerst, en alleen de top 5, 10 of 15</td></tr>
@@ -389,13 +413,14 @@
               <tr><td>Afgewezen vakantieaanvragen vanaf</td><td>1 (0 zet dit signaal uit)</td></tr>
             </tbody>
           </table></div>
-          <p><strong>Velden:</strong> geef een veld een kortere of duidelijkere naam, of verberg een veld dat je niet gebruikt.</p>
+          <p><strong>Velden:</strong> geef een veld een kortere of duidelijkere naam, of verberg een veld dat je niet gebruikt. Bij eigen kolommen kies je hier ook de soort: getal, kenmerk, datum of tekst.</p>
           <p><strong>Instellingen delen:</strong> je keuzes staan in deze browser. Met <strong>Instellingen exporteren</strong> krijg je het bestand <code>koppelingen.json</code>. Stuur dat naar Herman, dan kan hij jouw keuzes de standaard maken voor iedereen. Met <strong>Instellingen importeren</strong> laad je zo'n bestand op een andere computer.</p>
 
           <h2 id="hl-gegevens">Gegevens</h2>
           <ul>
             <li><strong>Ingelezen maanden:</strong> per maand het bronbestand, het aantal regels en de te werken dagen. Een ⚠ betekent dat er geen te werken dagen zijn ingevuld. Met het kruisje verwijder je een maand.</li>
             <li><strong>Alle gegevens exporteren (JSON):</strong> een back-up van alle maanden en instellingen. Maak die regelmatig, bijvoorbeeld na elke maand. Met <strong>Back-up terugzetten</strong> laad je hem op een andere computer.</li>
+            <li><strong>Extra kolommen:</strong> welke eigen kolommen het dashboard heeft overgenomen, en als welke soort.</li>
             <li><strong>Alles als CSV:</strong> alle regels van alle maanden in één bestand voor Excel.</li>
             <li><strong>Alle gegevens wissen:</strong> haalt alle maanden weg; instellingen en koppelingen blijven bewaard.</li>
           </ul>
@@ -419,6 +444,7 @@
             <dt>Een percentage staat op een streepje.</dt><dd>Er zijn voor die selectie geen te werken dagen ingevuld, dus er valt niets te delen.</dd>
             <dt>De cijfers wijken af van het Excel-bestand.</dt><dd>Controleer of de formules onder Instellingen zijn aangepast. Met Terug naar Excel-formules is alles weer gelijk aan het sjabloon.</dd>
             <dt>Kan Herman mijn gegevens zien?</dt><dd>Nee. Alles blijft in jouw browser. Wil je iets delen, gebruik dan een export, een afbeelding van een grafiek of een back-up.</dd>
+            <dt>Ik heb een kolom toegevoegd, maar zie hem niet.</dt><dd>Lees het bestand opnieuw in. Staat de kop wel in dezelfde rij als de andere koppen, en is de kolom voor minstens één medewerker ingevuld? Kijk ook of hij niet verborgen is bij Instellingen → Velden.</dd>
             <dt>Er klopt iets niet of ik mis een functie.</dt><dd>Laat het Herman weten, dan wordt het dashboard aangepast.</dd>
             <dt>Er is een nieuwe versie, maar ik zie hem niet.</dt><dd>Druk op Ctrl + F5 om de pagina opnieuw te laden.</dd>
           </dl>
@@ -453,6 +479,10 @@
         <article class="kaart breed">
           <header><h3>Ingelezen maanden</h3></header>
           <div class="tabel-wrap"><table id="d-maanden" class="tabel"></table></div>
+        </article>
+        <article class="kaart breed">
+          <header><h3>Extra kolommen</h3></header>
+          <div id="d-extra"></div>
         </article>
       </div>
     </section>

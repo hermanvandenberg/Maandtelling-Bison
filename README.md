@@ -34,7 +34,7 @@ Een volledige handleiding staat in het tabblad **Handleiding** van het dashboard
 | **Instellingen** | Pas aan wat meetelt in *gewerkte dagen*, *% gewerkt* en *% ziekteverzuim* (standaard precies de Excel-formules), stel signaalwaarden in, hernoem of verberg velden en exporteer/importeer alle instellingen. |
 | **Gegevens** | Bestanden inlezen, maanden beheren, back-up maken en terugzetten, alles exporteren als CSV. |
 
-Filters bovenaan (periode, ploeg, functie, dienstverband, medewerker, zoeken) werken op alle onderdelen. Met **PDF maken** in de filterbalk kies je welke onderdelen in een PDF komen, om te mailen of te printen.
+Filters bovenaan (periode, ploeg, functie, dienstverband, medewerker, eigen kenmerken uit extra kolommen, zoeken) werken op alle onderdelen. Met **PDF maken** in de filterbalk kies je welke onderdelen in een PDF komen, om te mailen of te printen.
 
 ## Instellingen delen
 
@@ -47,7 +47,9 @@ eerst opent.
 
 Het dashboard verwacht de kolommen uit het sjabloon *Maandtelling Power BI Bison*: Mdw., Medewerker, Functie, Ploeg,
 de telkolommen (te werken dagen t/m loonsuppletie) en de berekende kolommen. Kolommen worden op kopnaam herkend,
-dus de volgorde maakt niet uit. Extra kolommen met getallen worden automatisch als extra veld toegevoegd. Een kolom
+dus de volgorde maakt niet uit. Extra kolommen worden automatisch overgenomen: het dashboard herkent of er getallen (meetwaarde), korte
+terugkerende tekst (kenmerk, zoals ploeg), datums of vrije tekst (opmerking) in staan. Een kenmerk krijgt een eigen
+filter en kan in de grafiekbouwer en bij koppelingen gebruikt worden; de soort is aan te passen bij Instellingen → Velden. Een kolom
 *Maand* is ook mogelijk: dan kunnen meerdere maanden in één tabblad staan.
 
 ## Publiceren met GitHub Pages

@@ -257,3 +257,5 @@ main { padding: 20px; max-width: 1500px; margin: 0 auto; }
   .topbar, .filterbalk { position: static; }
   .kaart { break-inside: avoid; box-shadow: none; }
 }
+.tabel td.tekstcel { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+.detail-raster ~ .tabel-wrap td.tekstcel, #detail-inhoud td.tekstcel { white-space: normal; min-width: 200px; max-width: 360px; }
