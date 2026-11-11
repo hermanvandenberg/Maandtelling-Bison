@@ -18,6 +18,7 @@
     bouwer: { maat: 'pct_ziek', agg: 'som', dim: 'ploeg', split: '', type: 'bar', sort: 'natuurlijk', top: '0', vergelijk: '' },
     tabelSort: { key: 'naam', richting: 'op' },
     kolommen: null,
+    kolommenBekend: null,
     perMaand: false,
     koppelPaar: { a: '', b: '' },
     niveau: 'regel',
@@ -60,7 +61,7 @@
   function bewaarUi() {
     try {
       localStorage.setItem(OPSLAG_UI, JSON.stringify({
-        tab: S.tab, bouwer: S.bouwer, kolommen: S.kolommen, perMaand: S.perMaand, niveau: S.niveau,
+        tab: S.tab, bouwer: S.bouwer, kolommen: S.kolommen, kolommenBekend: S.kolommenBekend, perMaand: S.perMaand, niveau: S.niveau,
         trendMaat: S.trendMaat, ploegMaat: S.ploegMaat, functieMaat: S.functieMaat, thema: S.thema,
       }));
     } catch (e) { /* niet erg */ }
@@ -70,12 +71,23 @@
   }
 
   /* ================= Velden ================= */
+  /* Extra kolommen uit het Excel-bestand. soort: getal (meetwaarde), kenmerk of datum (indeling) of tekst (opmerking). */
+  function extraDefs() {
+    return (S.data.extraVelden || []).map(x => ({ key: x.key, label: x.label, kort: x.label, groep: 'extra', extra: true, soort: B.extraSoort(x, S.config) }));
+  }
   function alleMeetDefs() {
-    return B.MEETWAARDEN.concat((S.data.extraVelden || []).map(x => ({ key: x.key, label: x.label, kort: x.label, groep: 'extra' })));
+    return B.MEETWAARDEN.concat(extraDefs().filter(x => x.soort === 'getal'));
   }
+  // Extra kenmerken: werken als ploeg en functie (filteren, indelen, uitsplitsen, koppelen).
+  function extraKenmerken(ookVerborgen) { return extraDefs().filter(x => (x.soort === 'kenmerk' || x.soort === 'datum') && (ookVerborgen || !verborgen(x.key))); }
+  // Alles wat geen getal is, voor tabellen en het detailscherm.
+  function extraTeksten(ookVerborgen) { return extraDefs().filter(x => x.soort !== 'getal' && (ookVerborgen || !verborgen(x.key))); }
   function veldDef(key) {
-    return alleMeetDefs().find(m => m.key === key) || B.DIMENSIES.find(d => d.key === key);
+    return alleMeetDefs().find(m => m.key === key) || B.DIMENSIES.find(d => d.key === key) || extraDefs().find(d => d.key === key);
   }
+  function isDatumVeld(key) { return key === 'maand' || extraDefs().some(x => x.key === key && x.soort === 'datum'); }
+  // Waarde van een kenmerk zoals je hem leest: maanden als "mrt 26".
+  function dimTekst(key, v) { return isDatumVeld(key) && /^\d{4}-\d{2}$/.test(v) ? B.maandLabel(v, true) : (v == null ? '' : String(v)); }
   function label(key, kort) {
     const eigen = S.config.velden[key] && S.config.velden[key].label;
     if (eigen) return eigen;
@@ -85,9 +97,15 @@
   }
   function verborgen(key) { return !!(S.config.velden[key] && S.config.velden[key].verborgen); }
   function meetVelden(ookVerborgen) { return alleMeetDefs().filter(m => ookVerborgen || !verborgen(m.key)); }
-  function isDim(key) { return B.DIMENSIES.some(d => d.key === key); }
+  function isDim(key) { return B.DIMENSIES.some(d => d.key === key) || extraKenmerken(true).some(d => d.key === key); }
   const ZONDER_DATA = ['data', 'instellingen', 'koppelingen', 'handleiding'];
   const GROEP_DIMS = ['maand', 'ploeg', 'functie', 'naam', 'type'];
+  const FILTER_DIMS = ['ploeg', 'functie', 'type', 'naam'];
+  const KOPPEL_DIMS = ['ploeg', 'functie', 'type', 'maand'];
+  const extraKeys = () => extraKenmerken().map(d => d.key);
+  function groepDims() { return GROEP_DIMS.concat(extraKeys()); }
+  function filterDims() { return FILTER_DIMS.concat(extraKeys()); }
+  function koppelDims() { return KOPPEL_DIMS.concat(extraKeys()); }
 
   function maatOpties(sel, waarde, opts) {
     opts = opts || {};
@@ -109,27 +127,51 @@
     if (waarde != null && $$('option', sel).some(o => o.value === waarde)) sel.value = waarde;
   }
   function dimOpties(sel, waarde, leeg) {
-    sel.innerHTML = (leeg ? '<option value="">' + esc(leeg) + '</option>' : '') + GROEP_DIMS.map(d => '<option value="' + d + '">' + esc(label(d)) + '</option>').join('');
-    if (waarde != null) sel.value = waarde;
+    const extra = extraKeys();
+    sel.innerHTML = (leeg ? '<option value="">' + esc(leeg) + '</option>' : '') + GROEP_DIMS.map(d => '<option value="' + d + '">' + esc(label(d)) + '</option>').join('') +
+      (extra.length ? '<optgroup label="' + esc(B.GROEP_LABELS.extra) + '">' + extra.map(d => '<option value="' + d + '">' + esc(label(d)) + '</option>').join('') + '</optgroup>' : '');
+    if (waarde != null && $$('option', sel).some(o => o.value === waarde)) sel.value = waarde;
   }
 
   /* ================= Filters ================= */
   function filterRegels(behalve) {
     const f = S.filter;
     const z = f.zoek.toLowerCase();
+    const dims = filterDims();
     return S.regels.filter(r =>
       (behalve === 'periode' || ((!f.van || r.maand >= f.van) && (!f.tot || r.maand <= f.tot))) &&
-      (behalve === 'ploeg' || !f.ploeg.size || f.ploeg.has(r.ploeg)) &&
-      (behalve === 'functie' || !f.functie.size || f.functie.has(r.functie)) &&
-      (behalve === 'type' || !f.type.size || f.type.has(r.type)) &&
-      (behalve === 'naam' || !f.naam.size || f.naam.has(r.naam)) &&
+      dims.every(k => behalve === k || !f[k] || !f[k].size || f[k].has(r[k])) &&
       (!z || r.naam.toLowerCase().includes(z) || String(r.mdwNr || '').toLowerCase().includes(z))
     );
   }
 
   function uniek(key) { return Array.from(new Set(S.regels.map(r => r[key]))).sort(natuurlijk); }
 
+  // Voor elk extra kenmerk een eigen filter in de filterbalk, net als Ploeg en Functie.
+  function maakExtraFilters() {
+    const keys = extraKeys();
+    keys.forEach(k => { if (!S.filter[k]) S.filter[k] = new Set(); });
+    $$('.filter-extra').forEach(el => { if (!keys.includes(el.dataset.multi)) el.remove(); });
+    const voor = $('#filterbalk .filter.zoek');
+    keys.forEach(k => {
+      let el = $$('.filter-extra').find(x => x.dataset.multi === k);
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'filter filter-extra'; el.dataset.multi = k;
+        el.innerHTML = '<span class="flabel"></span><button class="multi-knop" type="button">Alle</button><div class="multi-lijst" hidden></div>';
+        koppelMulti(el);
+      }
+      $('.flabel', el).textContent = label(k);
+      voor.parentNode.insertBefore(el, voor);
+    });
+  }
+  function multiKnopTekst(key) {
+    const set = S.filter[key];
+    return !set.size ? 'Alle' : set.size === 1 ? dimTekst(key, Array.from(set)[0]) : set.size + ' gekozen';
+  }
+
   function vulFilters() {
+    maakExtraFilters();
     const opt = S.maanden.map(m => '<option value="' + m + '">' + esc(B.maandLabel(m)) + '</option>').join('');
     $('#f-van').innerHTML = opt; $('#f-tot').innerHTML = opt;
     if (!S.maanden.includes(S.filter.van)) S.filter.van = S.maanden[0] || '';
@@ -140,10 +182,11 @@
       const waarden = uniek(key);
       const set = S.filter[key];
       Array.from(set).forEach(v => { if (!waarden.includes(v)) set.delete(v); });
+      $('.multi-knop', el).title = label(key);
       const lijst = $('.multi-lijst', el);
       lijst.innerHTML = '<div class="multi-acties"><input type="search" placeholder="Zoek…" aria-label="Zoek in lijst"><button class="knop licht" type="button" data-alles>Alle</button></div>' +
-        waarden.map(v => '<label><input type="checkbox" value="' + esc(v) + '"' + (set.has(v) ? ' checked' : '') + '> ' + esc(v) + '</label>').join('');
-      $('.multi-knop', el).textContent = !set.size ? 'Alle' : set.size === 1 ? Array.from(set)[0] : set.size + ' gekozen';
+        waarden.map(v => '<label><input type="checkbox" value="' + esc(v) + '"' + (set.has(v) ? ' checked' : '') + '> ' + esc(dimTekst(key, v)) + '</label>').join('');
+      $('.multi-knop', el).textContent = multiKnopTekst(key);
     });
     toonActieveFilters();
   }
@@ -151,13 +194,13 @@
   function toonActieveFilters() {
     const f = S.filter;
     const chips = [];
-    ['ploeg', 'functie', 'type', 'naam'].forEach(k => f[k].forEach(v => chips.push({ k, v, t: label(k) + ': ' + v })));
+    filterDims().forEach(k => (f[k] || []).forEach(v => chips.push({ k, v, t: label(k) + ': ' + dimTekst(k, v) })));
     if (f.zoek) chips.push({ k: 'zoek', v: f.zoek, t: 'Zoeken: ' + f.zoek });
     $('#actieve-filters').innerHTML = chips.map(c => '<span class="chip">' + esc(c.t) + '<button type="button" data-k="' + c.k + '" data-v="' + esc(c.v) + '" aria-label="Filter verwijderen">×</button></span>').join('');
   }
 
   function wisselFilter(key, waarde) {
-    const set = S.filter[key];
+    const set = S.filter[key] = S.filter[key] || new Set();
     if (set.has(waarde)) set.delete(waarde); else set.add(waarde);
     vulFilters(); toepassen();
   }
@@ -168,12 +211,21 @@
     let zt;
     $('#f-zoek').addEventListener('input', e => { clearTimeout(zt); zt = setTimeout(() => { S.filter.zoek = e.target.value.trim(); toonActieveFilters(); toepassen(); }, 200); });
     $('#f-wis').addEventListener('click', () => {
-      ['ploeg', 'functie', 'type', 'naam'].forEach(k => S.filter[k].clear());
+      filterDims().forEach(k => { if (S.filter[k]) S.filter[k].clear(); });
       S.filter.zoek = ''; $('#f-zoek').value = '';
       S.filter.van = S.maanden[0] || ''; S.filter.tot = S.maanden[S.maanden.length - 1] || '';
       vulFilters(); toepassen();
     });
-    $$('[data-multi]').forEach(el => {
+    $$('[data-multi]').forEach(koppelMulti);
+    document.addEventListener('click', () => $$('.multi-lijst').forEach(l => { l.hidden = true; }));
+    $('#actieve-filters').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.k === 'zoek') { S.filter.zoek = ''; $('#f-zoek').value = ''; } else if (S.filter[b.dataset.k]) S.filter[b.dataset.k].delete(b.dataset.v);
+      vulFilters(); toepassen();
+    });
+  }
+
+  function koppelMulti(el) {
       const key = el.dataset.multi;
       const lijst = $('.multi-lijst', el);
       $('.multi-knop', el).addEventListener('click', e => {
@@ -187,8 +239,7 @@
       lijst.addEventListener('change', e => {
         if (e.target.type !== 'checkbox') return;
         if (e.target.checked) S.filter[key].add(e.target.value); else S.filter[key].delete(e.target.value);
-        const set = S.filter[key];
-        $('.multi-knop', el).textContent = !set.size ? 'Alle' : set.size === 1 ? Array.from(set)[0] : set.size + ' gekozen';
+        $('.multi-knop', el).textContent = multiKnopTekst(key);
         toonActieveFilters(); toepassen();
       });
       lijst.addEventListener('input', e => {
@@ -199,13 +250,6 @@
       lijst.addEventListener('click', e => {
         if (e.target.matches('[data-alles]')) { S.filter[key].clear(); vulFilters(); toepassen(); lijst.hidden = false; }
       });
-    });
-    document.addEventListener('click', () => $$('.multi-lijst').forEach(l => { l.hidden = true; }));
-    $('#actieve-filters').addEventListener('click', e => {
-      const b = e.target.closest('button'); if (!b) return;
-      if (b.dataset.k === 'zoek') { S.filter.zoek = ''; $('#f-zoek').value = ''; } else S.filter[b.dataset.k].delete(b.dataset.v);
-      vulFilters(); toepassen();
-    });
   }
 
   /* ================= Hoofdlus ================= */
@@ -548,7 +592,7 @@
     let notitie = '';
     if (b.split && b.split !== b.dim && b.type !== 'doughnut') {
       const splitWaarden = Array.from(new Set(r.map(x => x[b.split]))).sort(natuurlijk);
-      reeksen = splitWaarden.map(sv => ({ l: String(sv), key: b.maat, data: labels.map(l => waarde((per.get(l) || []).filter(x => x[b.split] === sv), b.maat)) }));
+      reeksen = splitWaarden.map(sv => ({ l: dimTekst(b.split, sv), key: b.maat, data: labels.map(l => waarde((per.get(l) || []).filter(x => x[b.split] === sv), b.maat)) }));
       if (reeksen.length > 8) {
         const tot = x => x.data.reduce((s, v) => s + (v || 0), 0);
         reeksen.sort((a, c) => tot(c) - tot(a));
@@ -583,7 +627,9 @@
     $('#b-agg').innerHTML = B.AGGREGATIES.map(a => '<option value="' + a.key + '">' + esc(a.label) + '</option>').join('');
     $('#b-agg').value = b.agg;
     dimOpties($('#b-dim'), b.dim);
+    b.dim = $('#b-dim').value;
     dimOpties($('#b-split'), b.split, 'Niet uitsplitsen');
+    b.split = $('#b-split').value;
     $('#b-type').value = b.type; $('#b-sort').value = b.sort; $('#b-top').value = b.top;
     const eenheid = isPct(b.maat);
     maatOpties($('#b-vergelijk'), b.vergelijk, { leeg: 'Niets', filter: m => m.key !== b.maat && isPct(m.key) === eenheid });
@@ -591,7 +637,7 @@
     $('#b-vergelijk').disabled = !!b.split;
 
     const { labels, reeksen, notitie } = bouwerData();
-    const dimLabels = labels.map(l => b.dim === 'maand' ? B.maandLabel(l, true) : l);
+    const dimLabels = labels.map(l => dimTekst(b.dim, l));
     const horizontaal = b.type === 'hbar' || (b.type === 'stacked' && labels.length > 12);
     // Percentages optellen is misleidend: gestapeld wordt dan naast elkaar getoond.
     const pctGestapeld = b.type === 'stacked' && isPct(b.maat) && b.agg !== 'aantal';
@@ -689,9 +735,18 @@
   function tabelKolommen() {
     const vast = [{ key: 'naam', l: 'Medewerker' }, { key: 'mdwNr', l: 'Mdw.-nr' }, { key: 'functie', l: 'Functie' }, { key: 'ploeg', l: 'Ploeg' }, { key: 'type', l: 'Dienstverband' }];
     if (S.perMaand) vast.splice(1, 0, { key: 'maand', l: 'Maand' });
+    const tekst = extraTeksten().map(m => ({ key: m.key, l: label(m.key, true), titel: label(m.key) }));
     const meet = meetVelden().map(m => ({ key: m.key, l: label(m.key, true), getal: true, titel: label(m.key) }));
-    if (!S.kolommen) S.kolommen = meetVelden().map(m => m.key);
-    return vast.concat(meet.filter(m => S.kolommen.includes(m.key)));
+    werkKolommenBij();
+    return vast.concat(tekst.filter(m => S.kolommen.includes(m.key)), meet.filter(m => S.kolommen.includes(m.key)));
+  }
+  function kiesbareKolommen() { return extraTeksten().concat(meetVelden()); }
+  // Nieuwe kolommen uit het Excel-bestand komen er vanzelf bij; kolommen die je zelf uitzette, blijven uit.
+  function werkKolommenBij() {
+    const alle = kiesbareKolommen().map(m => m.key);
+    if (!S.kolommen) S.kolommen = alle.slice();
+    if (!S.kolommenBekend) S.kolommenBekend = S.kolommen.concat(B.MEETWAARDEN.map(m => m.key));
+    alle.forEach(k => { if (!S.kolommenBekend.includes(k)) { S.kolommenBekend.push(k); if (!S.kolommen.includes(k)) S.kolommen.push(k); } });
   }
 
   function signaalVoor(key, v, r) {
@@ -709,7 +764,7 @@
     let rijen;
     if (S.perMaand) rijen = S.gefilterd.map(r => Object.assign({}, r));
     else {
-      rijen = B.perMedewerker(S.gefilterd, S.config, meetVelden(true));
+      rijen = B.perMedewerker(S.gefilterd, S.config, meetVelden(true), extraTeksten(true).map(x => x.key));
       rijen.forEach(r => { r.mdwNr = r._regels[0].mdwNr; });
     }
     const { key, richting } = S.tabelSort;
@@ -731,8 +786,7 @@
     const body = '<tbody>' + rijen.map(r => '<tr>' + kol.map(k => {
       const v = r[k.key];
       if (k.key === 'naam') return '<td><button class="link" type="button" data-detail="' + esc(r.mdw) + '">' + esc(v) + '</button></td>';
-      if (k.key === 'maand') return '<td>' + esc(B.maandLabel(v, true)) + '</td>';
-      if (!k.getal) return '<td>' + esc(v) + '</td>';
+      if (!k.getal) return veldDef(k.key) && veldDef(k.key).soort === 'tekst' ? '<td class="tekstcel" title="' + esc(v) + '">' + esc(v) + '</td>' : '<td>' + esc(dimTekst(k.key, v)) + '</td>';
       const sig = signaalVoor(k.key, v, r);
       const breedte = max[k.key] && !isPct(k.key) ? Math.min(100, Math.abs(v || 0) / max[k.key] * 100) : (isPct(k.key) && v != null ? Math.min(100, Math.max(0, v)) : 0);
       return '<td class="getal databalk"><span class="balk" style="width:' + breedte.toFixed(1) + '%"></span><span class="w' + (sig ? ' signaal' : '') + '">' + (sig ? '⚠ ' : '') + fmt(v, k.key) + '</span></td>';
@@ -744,7 +798,7 @@
     }).join('') + '</tr></tfoot>';
     $('#m-tabel').innerHTML = kop + body + voet;
     $('#m-permaand').checked = S.perMaand;
-    $('#m-kolomkeuze').innerHTML = meetVelden().map(m => '<label><input type="checkbox" value="' + m.key + '"' + (S.kolommen.includes(m.key) ? ' checked' : '') + '> ' + esc(label(m.key)) + '</label>').join('') +
+    $('#m-kolomkeuze').innerHTML = kiesbareKolommen().map(m => '<label><input type="checkbox" value="' + m.key + '"' + (S.kolommen.includes(m.key) ? ' checked' : '') + '> ' + esc(label(m.key)) + '</label>').join('') +
       '<span class="knoppen" style="margin:0"><button class="knop licht" type="button" data-kol="alle">Alle</button><button class="knop licht" type="button" data-kol="geen">Geen</button><button class="knop licht" type="button" data-kol="kern">Alleen kerncijfers</button></span>';
     S._mTabel = { kol, rijen };
   }
@@ -767,7 +821,7 @@
     });
     $('#m-kolomkeuze').addEventListener('click', e => {
       const b = e.target.closest('[data-kol]'); if (!b) return;
-      if (b.dataset.kol === 'alle') S.kolommen = meetVelden().map(m => m.key);
+      if (b.dataset.kol === 'alle') S.kolommen = kiesbareKolommen().map(m => m.key);
       if (b.dataset.kol === 'geen') S.kolommen = [];
       if (b.dataset.kol === 'kern') S.kolommen = ['te_werken', 'ziekte', 'vakantie', 'gewerkt', 'pct_gewerkt', 'pct_ziek', 'verlofsaldo'];
       bewaarUi(); renderMedewerkers();
@@ -778,6 +832,7 @@
       const csv = [kol.map(k => k.titel || k.l)].concat(rijen.map(r => kol.map(k => {
         const v = r[k.key];
         if (k.key === 'maand') return B.maandLabel(v);
+        if (!k.getal) return dimTekst(k.key, v);
         return typeof v === 'number' ? Math.round(v * 100) / 100 : v;
       })));
       download('medewerkers-' + datumStempel() + '.csv', naarCsv(csv), 'text/csv');
@@ -817,13 +872,15 @@
     groepHtml += Object.keys(perGroep).map(g => '<div class="detail-groep"><h4>' + esc(B.GROEP_LABELS[g] || g) + '</h4><dl>' + perGroep[g].map(v => '<dt>' + esc(label(v.key)) + '</dt><dd>' + fmt(waarde(v.key), v.key) + '</dd>').join('') + '</dl></div>').join('');
     const periode = basis.length === 1 ? B.maandLabel(basis[0].maand) : B.maandLabel(basis[0].maand) + ' t/m ' + B.maandLabel(basis[basis.length - 1].maand);
     const sigs = signalenLijst(basis);
+    const kenm = extraTeksten();
+    const kenmTekst = kenm.filter(x => x.soort !== 'tekst' && l[x.key] && l[x.key] !== 'Onbekend').map(x => ' · ' + esc(label(x.key)) + ': ' + esc(dimTekst(x.key, l[x.key]))).join('');
     $('#detail-inhoud').innerHTML =
-      '<p class="sub">' + esc(l.functie) + ' · ' + esc(l.ploeg) + ' · ' + esc(l.type) + (l.mdwNr && l.mdwNr !== l.naam ? ' · nr. ' + esc(l.mdwNr) : '') + ' · periode: ' + esc(periode) + '</p>' +
+      '<p class="sub">' + esc(l.functie) + ' · ' + esc(l.ploeg) + ' · ' + esc(l.type) + (l.mdwNr && l.mdwNr !== l.naam ? ' · nr. ' + esc(l.mdwNr) : '') + kenmTekst + ' · periode: ' + esc(periode) + '</p>' +
       (sigs.length ? '<div class="signalen" style="margin:10px 0">' + sigs.map(s => '<div class="sig"><span class="ico">' + s.ico + '</span><span>' + esc(s.t) + '</span></div>').join('') + '</div>' : '') +
       '<div class="grafiek" style="margin:12px 0"><canvas id="c-detail"></canvas></div>' +
       '<div class="detail-raster">' + groepHtml + '</div>' +
-      '<h3 style="margin:16px 0 8px">Per maand</h3><div class="tabel-wrap"><table class="tabel"><thead><tr><th>Maand</th>' + velden.map(v => '<th class="getal" title="' + esc(label(v.key)) + '">' + esc(label(v.key, true)) + '</th>').join('') + '</tr></thead><tbody>' +
-      rs.map(r => '<tr><td>' + esc(B.maandLabel(r.maand, true)) + '</td>' + velden.map(v => { const s = signaalVoor(v.key, r[v.key], r); return '<td class="getal' + (s ? ' signaal' : '') + '">' + (s ? '⚠ ' : '') + fmt(r[v.key], v.key) + '</td>'; }).join('') + '</tr>').join('') + '</tbody></table></div>';
+      '<h3 style="margin:16px 0 8px">Per maand</h3><div class="tabel-wrap"><table class="tabel"><thead><tr><th>Maand</th>' + kenm.map(x => '<th>' + esc(label(x.key, true)) + '</th>').join('') + velden.map(v => '<th class="getal" title="' + esc(label(v.key)) + '">' + esc(label(v.key, true)) + '</th>').join('') + '</tr></thead><tbody>' +
+      rs.map(r => '<tr><td>' + esc(B.maandLabel(r.maand, true)) + '</td>' + kenm.map(x => '<td' + (x.soort === 'tekst' ? ' class="tekstcel"' : '') + '>' + esc(dimTekst(x.key, r[x.key])) + '</td>').join('') + velden.map(v => { const s = signaalVoor(v.key, r[v.key], r); return '<td class="getal' + (s ? ' signaal' : '') + '">' + (s ? '⚠ ' : '') + fmt(r[v.key], v.key) + '</td>'; }).join('') + '</tr>').join('') + '</tbody></table></div>';
     const dlg = $('#detail-dialoog');
     if (!dlg.open) dlg.showModal();
     grafiekBasis();
@@ -841,7 +898,6 @@
   }
 
   /* ================= Koppelingen ================= */
-  const KOPPEL_DIMS = ['ploeg', 'functie', 'type', 'maand'];
   function paarSleutel(a, b) { return [a, b].sort().join('|'); }
   function vindKoppeling(a, b) { const s = paarSleutel(a, b); return S.config.koppelingen.find(k => paarSleutel(k.a, k.b) === s); }
   const STATUS = {
@@ -870,8 +926,8 @@
   function renderKoppelingen() {
     grafiekBasis();
     const a = $('#k-a'), b = $('#k-b');
-    maatOpties(a, S.koppelPaar.a, { dims: KOPPEL_DIMS, leeg: 'Kies een veld…' });
-    maatOpties(b, S.koppelPaar.b, { dims: KOPPEL_DIMS, leeg: 'Kies een veld…' });
+    maatOpties(a, S.koppelPaar.a, { dims: koppelDims(), leeg: 'Kies een veld…' });
+    maatOpties(b, S.koppelPaar.b, { dims: koppelDims(), leeg: 'Kies een veld…' });
     $('#k-niveau').value = S.niveau;
     vulFormulierUitKoppeling();
     renderScatter();
@@ -937,7 +993,7 @@
       const agg = isPct(m) ? 'som' : 'gem_mdw';
       teken('c-scatter', {
         type: 'bar',
-        data: { labels: labels.map(l => dim === 'maand' ? B.maandLabel(l, true) : l), datasets: [Object.assign({ label: label(m), _key: m, data: labels.map(l => B.meet(per.get(l), m, agg, S.config)) }, staafStijl(reeksKleur(0)))] },
+        data: { labels: labels.map(l => dimTekst(dim, l)), datasets: [Object.assign({ label: label(m), _key: m, data: labels.map(l => B.meet(per.get(l), m, agg, S.config)) }, staafStijl(reeksKleur(0)))] },
         options: { plugins: { legend: { display: false }, tooltip: tooltipWaarde(m) }, scales: assen({ pct: isPct(m) }) },
       });
       voet.textContent = label(m) + (isPct(m) ? '' : ' (gemiddelde per medewerker)') + ' per ' + label(dim).toLowerCase() + '. Grote verschillen tussen de staven wijzen op samenhang.';
@@ -947,11 +1003,11 @@
       let lb = Array.from(new Set(S.gefilterd.map(r => r[b]))).sort(natuurlijk);
       const rest = lb.length > 8 ? lb.splice(7) : [];
       const telling = (rs, waarden) => new Set(rs.filter(r => waarden.includes(r[b])).map(r => r.mdw)).size;
-      const reeksen = lb.map(v => ({ l: String(v), w: [v] }));
+      const reeksen = lb.map(v => ({ l: dimTekst(b, v), w: [v] }));
       if (rest.length) reeksen.push({ l: 'Overig', w: rest });
       teken('c-scatter', {
         type: 'bar',
-        data: { labels: la.map(l => a === 'maand' ? B.maandLabel(l, true) : l), datasets: reeksen.map((x, i) => Object.assign({ label: x.l, data: la.map(l => telling(per.get(l), x.w)) }, staafStijl(reeksKleur(i), { borderRadius: 0, borderWidth: { top: 2 } }))) },
+        data: { labels: la.map(l => dimTekst(a, l)), datasets: reeksen.map((x, i) => Object.assign({ label: x.l, data: la.map(l => telling(per.get(l), x.w)) }, staafStijl(reeksKleur(i), { borderRadius: 0, borderWidth: { top: 2 } }))) },
         options: { interaction: { mode: 'index', intersect: false }, plugins: { legend: legendaNodig(reeksen.length), tooltip: { callbacks: { label: c => ' ' + c.dataset.label + ': ' + c.parsed.y + ' medewerker(s)' } } }, scales: assen({ stacked: true }) },
       });
       voet.textContent = 'Aantal medewerkers per combinatie van ' + label(a).toLowerCase() + ' en ' + label(b).toLowerCase() + '.';
@@ -1123,9 +1179,13 @@
       ['verlofsaldoBoven', 'Signaal als verlofsaldo hoger is dan (dagen)'],
       ['afgewezenVanaf', 'Signaal vanaf dit aantal afgewezen aanvragen (0 = uit)'],
     ].map(([k, l]) => '<div class="veld"><label for="sg-' + k + '">' + esc(l) + '</label><input type="number" step="0.5" min="0" id="sg-' + k + '" data-sg="' + k + '" value="' + sg[k] + '"></div>').join('');
-    $('#i-velden').innerHTML = '<thead><tr><th>Veld (zoals in Excel)</th><th>Groep</th><th>Eigen naam</th><th>Verbergen</th></tr></thead><tbody>' +
-      alleMeetDefs().map(m => '<tr><td>' + esc(m.label) + '</td><td>' + esc(B.GROEP_LABELS[m.groep] || '') + '</td><td><input type="text" data-v-label="' + m.key + '" value="' + esc((S.config.velden[m.key] || {}).label || '') + '" placeholder="' + esc(m.label) + '" aria-label="Eigen naam"></td><td><input type="checkbox" data-v-verborgen="' + m.key + '"' + (verborgen(m.key) ? ' checked' : '') + ' aria-label="Verbergen"></td></tr>').join('') + '</tbody>';
+    const soortKeuze = m => !m.extra ? '<span class="hint">' + (m.berekend ? 'Berekend' : 'Getal') + '</span>' :
+      '<select data-v-soort="' + m.key + '" aria-label="Soort">' + B.SOORTEN.map(x => '<option value="' + x + '"' + (x === m.soort ? ' selected' : '') + '>' + esc(SOORT_LABELS[x]) + '</option>').join('') + '</select>';
+    $('#i-velden').innerHTML = '<thead><tr><th>Veld (zoals in Excel)</th><th>Groep</th><th>Soort</th><th>Eigen naam</th><th>Verbergen</th></tr></thead><tbody>' +
+      B.MEETWAARDEN.concat(extraDefs()).map(m => '<tr><td>' + esc(m.label) + '</td><td>' + esc(B.GROEP_LABELS[m.groep] || '') + '</td><td>' + soortKeuze(m) + '</td><td><input type="text" data-v-label="' + m.key + '" value="' + esc((S.config.velden[m.key] || {}).label || '') + '" placeholder="' + esc(m.label) + '" aria-label="Eigen naam"></td><td><input type="checkbox" data-v-verborgen="' + m.key + '"' + (verborgen(m.key) ? ' checked' : '') + ' aria-label="Verbergen"></td></tr>').join('') + '</tbody>';
   }
+
+  const SOORT_LABELS = { getal: 'Getal (meetwaarde)', kenmerk: 'Kenmerk (zoals ploeg)', datum: 'Datum (per maand)', tekst: 'Tekst (opmerking)' };
 
   function bewaarConfigEnMeld(tekst) {
     B.bewaarConfig(S.config);
@@ -1164,6 +1224,20 @@
     });
     $('#i-velden').addEventListener('change', e => {
       const t = e.target;
+      if (t.dataset.vSoort) {
+        const k = t.dataset.vSoort;
+        const v = S.config.velden[k] = S.config.velden[k] || {};
+        v.soort = t.value;
+        // Een veld dat geen getal meer is, kan niet meer meetellen in de formules.
+        if (t.value !== 'getal') {
+          const f = S.config.formules;
+          Object.keys(f).forEach(n => Object.keys(f[n]).forEach(d => { f[n][d] = f[n][d].filter(x => x !== k); }));
+        }
+        if (S.kolommen && !S.kolommen.includes(k)) S.kolommen.push(k);
+        bewaarConfigEnMeld(label(k) + ' is nu: ' + SOORT_LABELS[t.value].toLowerCase());
+        herbereken();
+        return;
+      }
       const k = t.dataset.vLabel || t.dataset.vVerborgen; if (!k) return;
       const v = S.config.velden[k] = S.config.velden[k] || {};
       if (t.dataset.vLabel) { if (t.value.trim()) v.label = t.value.trim(); else delete v.label; }
@@ -1199,6 +1273,10 @@
         const tw = d.regels.reduce((s, r) => s + (r.te_werken || 0), 0);
         return '<tr><td>' + esc(B.maandLabel(m)) + '</td><td>' + esc(d.bron) + '</td><td class="getal">' + d.regels.length + '</td><td class="getal">' + nf1.format(tw) + (tw === 0 ? ' <span class="signaal" title="Er zijn geen te werken dagen ingevuld">⚠</span>' : '') + '</td><td>' + esc(new Date(d.ingelezen).toLocaleString('nl-NL')) + '</td><td><button class="icon-knop" type="button" data-d-weg="' + m + '" title="Verwijderen" aria-label="Verwijderen">✕</button></td></tr>';
       }).join('') : '<tr><td colspan="6" class="hint">Nog niets ingelezen.</td></tr>') + '</tbody>';
+    const ex = extraDefs();
+    $('#d-extra').innerHTML = ex.length
+      ? '<p>Extra kolommen uit je Excel-bestand die het dashboard heeft overgenomen:</p><ul>' + ex.map(x => '<li><strong>' + esc(x.label) + '</strong>: ' + esc(SOORT_LABELS[x.soort].toLowerCase()) + (verborgen(x.key) ? ' (verborgen)' : '') + '</li>').join('') + '</ul><p class="hint">Klopt de soort niet? Pas hem aan bij Instellingen → Velden.</p>'
+      : '<p class="hint">Nog geen extra kolommen. Voeg je in Excel een kolom toe, dan verschijnt die hier na het inlezen vanzelf.</p>';
   }
 
   let wachtrij = [];
@@ -1224,7 +1302,8 @@
     const nu = new Date();
     const standaard = nu.getFullYear() + '-' + String(nu.getMonth() + 1).padStart(2, '0');
     $('#import-lijst').innerHTML = wachtrij.map((w, i) =>
-      '<div class="import-rij"><div><strong>' + esc(w.bestand) + '</strong><small>Tabblad ‘' + esc(w.blad) + '’ · ' + w.regels.length + ' medewerkers' + (w.maand ? '' : ' · maand niet herkend') + '</small><small class="bestaat" data-i="' + i + '"></small></div>' +
+      '<div class="import-rij"><div><strong>' + esc(w.bestand) + '</strong><small>Tabblad ‘' + esc(w.blad) + '’ · ' + w.regels.length + ' medewerkers' + (w.maand ? '' : ' · maand niet herkend') + '</small>' +
+      ((w.extra || []).length ? '<small>Extra kolommen: ' + esc(w.extra.map(x => x.label + ' (' + SOORT_LABELS[x.soort].split(' ')[0].toLowerCase() + ')').join(', ')) + '</small>' : '') + '<small class="bestaat" data-i="' + i + '"></small></div>' +
       '<input type="month" required data-import="' + i + '" value="' + (w.maand || standaard) + '" aria-label="Maand"></div>').join('');
     const toonBestaat = () => $$('[data-import]').forEach(inp => { const s = $('.bestaat[data-i="' + inp.dataset.import + '"]'); s.textContent = S.data.maanden[inp.value] ? '⚠ ' + B.maandLabel(inp.value) + ' bestaat al en wordt vervangen' : ''; });
     $('#import-lijst').oninput = toonBestaat;
@@ -1246,7 +1325,7 @@
         const w = wachtrij[+inp.dataset.import];
         const m = inp.value; if (!m) return;
         S.data.maanden[m] = { bron: w.bestand + (w.blad ? ' / ' + w.blad : ''), ingelezen: new Date().toISOString(), regels: w.regels.map(r => { const k = Object.assign({}, r); delete k.maand; return k; }) };
-        (w.extra || []).forEach(x => { if (!S.data.extraVelden.some(e => e.key === x.key)) S.data.extraVelden.push(x); });
+        B.voegExtraToe(S.data.extraVelden, w.extra);
         n++;
       });
       wachtrij = [];
@@ -1324,8 +1403,9 @@
     });
     $('#d-csv').addEventListener('click', () => {
       const velden = meetVelden(true);
-      const rijen = [['Maand', 'Mdw.-nr', 'Medewerker', 'Functie', 'Ploeg', 'Dienstverband'].concat(velden.map(v => label(v.key)))]
-        .concat(S.regels.map(r => [r.maand, r.mdwNr, r.naam, r.functie, r.ploeg, r.type].concat(velden.map(v => r[v.key] == null ? '' : Math.round(r[v.key] * 100) / 100))));
+      const tekst = extraTeksten(true);
+      const rijen = [['Maand', 'Mdw.-nr', 'Medewerker', 'Functie', 'Ploeg', 'Dienstverband'].concat(tekst.map(v => label(v.key)), velden.map(v => label(v.key)))]
+        .concat(S.regels.map(r => [r.maand, r.mdwNr, r.naam, r.functie, r.ploeg, r.type].concat(tekst.map(v => dimTekst(v.key, r[v.key])), velden.map(v => r[v.key] == null ? '' : Math.round(r[v.key] * 100) / 100))));
       download('maandtelling-alles-' + datumStempel() + '.csv', naarCsv(rijen), 'text/csv');
     });
     $('#d-wis').addEventListener('click', () => {
@@ -1365,7 +1445,7 @@
     const f = S.filter;
     const delen = [];
     if (f.van && f.tot) delen.push(f.van === f.tot ? B.maandLabel(f.van) : B.maandLabel(f.van) + ' t/m ' + B.maandLabel(f.tot));
-    ['ploeg', 'functie', 'type', 'naam'].forEach(k => { if (f[k].size) delen.push(label(k) + ': ' + Array.from(f[k]).join(', ')); });
+    filterDims().forEach(k => { if (f[k] && f[k].size) delen.push(label(k) + ': ' + Array.from(f[k]).map(v => dimTekst(k, v)).join(', ')); });
     if (f.zoek) delen.push('zoeken: ' + f.zoek);
     return delen.join(' · ') || 'alle gegevens';
   }
@@ -1500,9 +1580,10 @@
             if (k.key === 'naam') kolStijl[i] = { cellWidth: veel ? 30 : 38 };
             else if (k.key === 'functie') kolStijl[i] = { cellWidth: veel ? 22 : 30 };
             else if (k.key === 'ploeg') kolStijl[i] = { cellWidth: 12 };
+            else if (!k.getal && veldDef(k.key) && veldDef(k.key).extra) kolStijl[i] = { cellWidth: veldDef(k.key).soort === 'tekst' ? (veel ? 26 : 45) : (veel ? 13 : 20) };
             else if (k.getal) kolStijl[i] = { halign: 'right' };
           });
-          tabel(kol.map(k => k.l), rijen.map(r => kol.map(k => k.key === 'maand' ? B.maandLabel(r[k.key], true) : k.key === 'functie' ? String(r[k.key]).replace(' havenduwboot', '') : k.getal ? fmt(r[k.key], k.key) : r[k.key])),
+          tabel(kol.map(k => k.l), rijen.map(r => kol.map(k => k.key === 'functie' ? String(r[k.key]).replace(' havenduwboot', '') : k.getal ? fmt(r[k.key], k.key) : dimTekst(k.key, r[k.key]))),
             { styles: { font: 'helvetica', fontSize: veel ? 6.5 : 8, cellPadding: 1.1, textColor: [11, 11, 11], lineColor: [225, 224, 217], lineWidth: 0.1 },
               headStyles: { fillColor: [242, 241, 237], textColor: [82, 81, 78], fontStyle: 'bold', fontSize: veel ? 6 : 7.5 },
               columnStyles: kolStijl });
